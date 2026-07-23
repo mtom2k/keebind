@@ -2,9 +2,16 @@ import { app, globalShortcut } from 'electron'
 import { refreshBindings } from './bindings/engine'
 import { applySettings, registerIpc } from './ipc'
 import { shutdownListener } from './listener'
+import { destroyPopover } from './popover'
 import { store } from './store'
 import { createTray } from './tray'
-import { createMainWindow, setQuitting, showMainWindow } from './window'
+import { applyDockVisibility, createMainWindow, setQuitting, showMainWindow } from './window'
+
+// Before anything reads it: fixes the process name in dev (packaged builds get
+// it from Info.plist / productName) so menus, dialogs and the macOS privacy
+// panes say "KeeBind". Case-only change from "Keebind", so the existing
+// userData directory is reused on macOS and Windows.
+app.setName('KeeBind')
 
 const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) {
@@ -13,9 +20,10 @@ if (!gotLock) {
   app.on('second-instance', () => showMainWindow())
 
   app.whenReady().then(() => {
-    // Menu-bar/tray app: no Dock icon on macOS (packaged builds also set
-    // LSUIElement via electron-builder).
-    if (process.platform === 'darwin') app.dock?.hide()
+    // Dock/taskbar presence follows the "Show in Dock" setting; applySettings
+    // calls applyDockVisibility. Apply it up front so there is no flicker
+    // before the settings round-trip.
+    applyDockVisibility(store.settings.showDockIcon)
 
     registerIpc()
     applySettings(store.settings)
@@ -29,7 +37,12 @@ if (!gotLock) {
 
   app.on('activate', () => showMainWindow())
 
-  app.on('before-quit', () => setQuitting(true))
+  app.on('before-quit', () => {
+    setQuitting(true)
+    // The popover is frameless and hides on blur, so it would otherwise sit
+    // there invisible and keep the app alive.
+    destroyPopover()
+  })
 
   app.on('will-quit', () => {
     globalShortcut.unregisterAll()

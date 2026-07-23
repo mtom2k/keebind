@@ -24,7 +24,7 @@ export async function listViaDevices(): Promise<ViaDeviceSummary[]> {
  */
 export async function openViaDevice(path: string): Promise<ViaDeviceDetail> {
   const summary = (await listViaDevices()).find((d) => d.path === path)
-  if (!summary) throw new Error('Device not found — it may have been unplugged.')
+  if (!summary) throw new Error('Device not found. It may have been unplugged.')
   const definition = findDefinition(summary.vendorId, summary.productId)
   if (!definition) {
     throw new Error(

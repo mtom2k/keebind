@@ -105,7 +105,7 @@ export function checkConflicts(
       hits.push({
         severity: 'warning',
         combo: other.accelerator,
-        label: `Already bound in Keebind: "${other.description || other.accelerator}"`,
+        label: `Already bound in KeeBind: "${other.description || other.accelerator}"`,
         source: 'app'
       })
     }

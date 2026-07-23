@@ -6,24 +6,46 @@ import type {
   ConflictHit,
   KeyEventPayload,
   ListenerStatus,
+  NavigateRequest,
+  PermissionsInfo,
+  PickKind,
   Settings,
   ViaDeviceDetail,
   ViaDeviceSummary
 } from '../shared/types'
 
-export interface KeebindApi {
+export interface KeeBindApi {
   appInfo(): Promise<AppInfo>
   getSettings(): Promise<Settings>
   setSettings(patch: Partial<Settings>): Promise<Settings>
   listBindings(): Promise<{ bindings: Binding[]; statuses: BindingStatus[] }>
   saveBinding(binding: Binding): Promise<{ bindings: Binding[]; statuses: BindingStatus[] }>
   deleteBinding(id: string): Promise<{ bindings: Binding[]; statuses: BindingStatus[] }>
+  /** Runs a binding's action now, without pressing its hotkey */
+  runBinding(id: string): Promise<void>
   checkConflicts(accelerator: string, excludeId?: string): Promise<ConflictHit[]>
   listenerStart(): Promise<ListenerStatus>
   listenerStop(): Promise<ListenerStatus>
   listenerStatus(): Promise<ListenerStatus>
   openPermissionSettings(pane: 'accessibility' | 'inputMonitoring'): Promise<void>
+  permissionsInfo(): Promise<PermissionsInfo>
+  /** Prompts and registers KeeBind in the pane. See src/main/permissions.ts */
+  requestPermission(pane: 'accessibility' | 'inputMonitoring'): Promise<PermissionsInfo>
+  revealApp(): Promise<void>
+  /** Clears KeeBind's macOS privacy records so a fresh grant can be made */
+  resetPermissions(): Promise<PermissionsInfo>
+  /** Opens a native file picker; resolves to null if the user cancels */
+  pickPath(kind: PickKind): Promise<string | null>
+  showAbout(): Promise<void>
+  navigate(request: NavigateRequest): Promise<void>
+  quit(): Promise<void>
+  /** Tray popover: report the height the content needs, and dismiss */
+  resizePopover(height: number): Promise<void>
+  hidePopover(): Promise<void>
   onKeyEvent(cb: (payload: KeyEventPayload) => void): () => void
+  onNavigate(cb: (request: NavigateRequest) => void): () => void
+  /** Fires when the popover is shown or its binding list changes */
+  onPopoverRefresh(cb: () => void): () => void
   viaList(): Promise<ViaDeviceSummary[]>
   viaOpen(path: string): Promise<ViaDeviceDetail>
   viaSetKeycode(args: {
@@ -38,23 +60,44 @@ export interface KeebindApi {
   viaBundledCount(): Promise<number>
 }
 
-const api: KeebindApi = {
+const api: KeeBindApi = {
   appInfo: () => ipcRenderer.invoke('app:info'),
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSettings: (patch) => ipcRenderer.invoke('settings:set', patch),
   listBindings: () => ipcRenderer.invoke('bindings:list'),
   saveBinding: (binding) => ipcRenderer.invoke('bindings:save', binding),
   deleteBinding: (id) => ipcRenderer.invoke('bindings:delete', id),
+  runBinding: (id) => ipcRenderer.invoke('bindings:run', id),
   checkConflicts: (accelerator, excludeId) =>
     ipcRenderer.invoke('bindings:checkConflicts', { accelerator, excludeId }),
   listenerStart: () => ipcRenderer.invoke('listener:start'),
   listenerStop: () => ipcRenderer.invoke('listener:stop'),
   listenerStatus: () => ipcRenderer.invoke('listener:status'),
   openPermissionSettings: (pane) => ipcRenderer.invoke('permissions:open', pane),
+  permissionsInfo: () => ipcRenderer.invoke('permissions:info'),
+  requestPermission: (pane) => ipcRenderer.invoke('permissions:request', pane),
+  revealApp: () => ipcRenderer.invoke('permissions:reveal'),
+  resetPermissions: () => ipcRenderer.invoke('permissions:reset'),
+  pickPath: (kind) => ipcRenderer.invoke('dialog:pick', kind),
+  showAbout: () => ipcRenderer.invoke('app:showAbout'),
+  navigate: (request) => ipcRenderer.invoke('app:navigate', request),
+  quit: () => ipcRenderer.invoke('app:quit'),
+  resizePopover: (height) => ipcRenderer.invoke('popover:resize', height),
+  hidePopover: () => ipcRenderer.invoke('popover:hide'),
   onKeyEvent: (cb) => {
     const handler = (_e: IpcRendererEvent, payload: KeyEventPayload) => cb(payload)
     ipcRenderer.on('listener:key', handler)
     return () => ipcRenderer.removeListener('listener:key', handler)
+  },
+  onNavigate: (cb) => {
+    const handler = (_e: IpcRendererEvent, request: NavigateRequest) => cb(request)
+    ipcRenderer.on('app:navigate', handler)
+    return () => ipcRenderer.removeListener('app:navigate', handler)
+  },
+  onPopoverRefresh: (cb) => {
+    const handler = () => cb()
+    ipcRenderer.on('popover:refresh', handler)
+    return () => ipcRenderer.removeListener('popover:refresh', handler)
   },
   viaList: () => ipcRenderer.invoke('via:list'),
   viaOpen: (path) => ipcRenderer.invoke('via:open', path),

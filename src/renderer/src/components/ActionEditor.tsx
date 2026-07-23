@@ -1,11 +1,11 @@
-import type { ActionSpec, ActionStep, StepType } from '../../../shared/types'
+import type { ActionSpec, ActionStep, PickKind, StepType } from '../../../shared/types'
 import { Tooltip } from './Tooltip'
 
 const STEP_TYPES: { value: StepType; label: string; tip: string; placeholder: string }[] = [
   {
     value: 'launchApp',
     label: 'Launch app',
-    tip: 'Open an application by name or path (e.g. "Safari" or "C:\\...\\app.exe")',
+    tip: 'Open an application. Browse for it, or type its name or full path.',
     placeholder: 'App name or full path'
   },
   {
@@ -17,8 +17,8 @@ const STEP_TYPES: { value: StepType; label: string; tip: string; placeholder: st
   {
     value: 'openPath',
     label: 'Open file/folder',
-    tip: 'Open a file or folder with its default application',
-    placeholder: '/path/to/file-or-folder'
+    tip: 'Open a file or folder with whatever app normally handles it',
+    placeholder: 'Path to a file or folder'
   },
   {
     value: 'shellCommand',
@@ -35,11 +35,55 @@ function stepMeta(type: StepType) {
 export function summarizeAction(action: ActionSpec): string {
   if (action.type === 'workflow') {
     const steps = action.steps ?? []
-    return `Workflow — ${steps.length} step${steps.length === 1 ? '' : 's'}: ${steps
-      .map((s) => stepMeta(s.type).label.toLowerCase())
-      .join(' → ')}`
+    const names = steps.map((s) => stepMeta(s.type).label.toLowerCase()).join(', then ')
+    return `Workflow, ${steps.length} step${steps.length === 1 ? '' : 's'}: ${names}`
   }
   return `${stepMeta(action.type).label}: ${action.target ?? ''}`
+}
+
+/**
+ * Browse buttons for the targets that are paths. Windows file dialogs can't
+ * offer files and folders at once, so "Open file/folder" gets two buttons
+ * there; on macOS one dialog covers both.
+ */
+function BrowseButtons({
+  type,
+  onPick
+}: {
+  type: StepType
+  onPick: (path: string) => void
+}) {
+  const pick = async (kind: PickKind) => {
+    const path = await window.keebind.pickPath(kind)
+    if (path) onPick(path)
+  }
+
+  if (type === 'launchApp') {
+    return (
+      <Tooltip tip="Find the app in Finder or File Explorer">
+        <button type="button" className="btn" onClick={() => pick('app')}>
+          Browse
+        </button>
+      </Tooltip>
+    )
+  }
+  if (type === 'openPath') {
+    return (
+      <>
+        <Tooltip tip="Pick a file">
+          <button type="button" className="btn" onClick={() => pick('file')}>
+            File
+          </button>
+        </Tooltip>
+        <Tooltip tip="Pick a folder">
+          <button type="button" className="btn" onClick={() => pick('folder')}>
+            Folder
+          </button>
+        </Tooltip>
+      </>
+    )
+  }
+  return null
 }
 
 function StepFields({
@@ -70,16 +114,17 @@ function StepFields({
       )}
       <input
         type="text"
-        style={{ flex: 1 }}
+        style={{ flex: 1, minWidth: 0 }}
         value={step.target}
         placeholder={meta.placeholder}
         onChange={(e) => onChange({ ...step, target: e.target.value })}
       />
+      <BrowseButtons type={step.type} onPick={(target) => onChange({ ...step, target })} />
       {step.type === 'launchApp' && (
         <Tooltip tip="Optional command-line arguments passed to the app">
           <input
             type="text"
-            style={{ width: 120 }}
+            style={{ width: 110 }}
             value={step.args ?? ''}
             placeholder="args"
             onChange={(e) => onChange({ ...step, args: e.target.value || undefined })}
@@ -112,7 +157,7 @@ export function ActionEditor({ value, onChange }: Props) {
   return (
     <div>
       <div className="row" style={{ marginBottom: 8 }}>
-        <Tooltip tip="A single action, or a workflow of several steps run in order">
+        <Tooltip tip="One action, or a workflow of several steps run in order">
           <select
             value={isWorkflow ? 'workflow' : value.type}
             onChange={(e) => {
@@ -142,7 +187,7 @@ export function ActionEditor({ value, onChange }: Props) {
       </div>
 
       {!isWorkflow && (
-        <div className="row">
+        <div className="row wrap">
           <StepFields
             showType={false}
             step={{ type: value.type as StepType, target: value.target ?? '', args: value.args }}
@@ -156,50 +201,61 @@ export function ActionEditor({ value, onChange }: Props) {
           {steps.map((step, i) => (
             <div className="step-row" key={i}>
               <span className="step-num">{i + 1}.</span>
-              <StepFields
-                step={step}
-                onChange={(s) => setSteps(steps.map((old, j) => (j === i ? s : old)))}
-              />
-              <Tooltip tip="Wait this many milliseconds before running this step">
-                <input
-                  type="number"
-                  min={0}
-                  style={{ width: 84 }}
-                  value={step.delayMs ?? 0}
-                  onChange={(e) =>
-                    setSteps(
-                      steps.map((old, j) =>
-                        j === i ? { ...old, delayMs: Number(e.target.value) || undefined } : old
-                      )
-                    )
-                  }
+              {/* Target fields wrap as a group; the delay and the reorder
+                  buttons stay together on the trailing line. */}
+              <div className="step-fields">
+                <StepFields
+                  step={step}
+                  onChange={(s) => setSteps(steps.map((old, j) => (j === i ? s : old)))}
                 />
-              </Tooltip>
-              <span className="muted small">ms</span>
-              <Tooltip tip="Move this step up">
-                <button type="button" className="btn" disabled={i === 0} onClick={() => moveStep(i, -1)}>
-                  ↑
-                </button>
-              </Tooltip>
-              <Tooltip tip="Move this step down">
-                <button
-                  type="button"
-                  className="btn"
-                  disabled={i === steps.length - 1}
-                  onClick={() => moveStep(i, 1)}
-                >
-                  ↓
-                </button>
-              </Tooltip>
-              <Tooltip tip="Remove this step">
-                <button
-                  type="button"
-                  className="btn danger"
-                  onClick={() => setSteps(steps.filter((_, j) => j !== i))}
-                >
-                  ✕
-                </button>
-              </Tooltip>
+              </div>
+              <div className="step-tail">
+                <Tooltip tip="Wait this many milliseconds before running this step">
+                  <input
+                    type="number"
+                    min={0}
+                    style={{ width: 72 }}
+                    value={step.delayMs ?? 0}
+                    onChange={(e) =>
+                      setSteps(
+                        steps.map((old, j) =>
+                          j === i ? { ...old, delayMs: Number(e.target.value) || undefined } : old
+                        )
+                      )
+                    }
+                  />
+                </Tooltip>
+                <span className="muted small">ms</span>
+                <Tooltip tip="Move this step up">
+                  <button
+                    type="button"
+                    className="btn icon-square"
+                    disabled={i === 0}
+                    onClick={() => moveStep(i, -1)}
+                  >
+                    ↑
+                  </button>
+                </Tooltip>
+                <Tooltip tip="Move this step down">
+                  <button
+                    type="button"
+                    className="btn icon-square"
+                    disabled={i === steps.length - 1}
+                    onClick={() => moveStep(i, 1)}
+                  >
+                    ↓
+                  </button>
+                </Tooltip>
+                <Tooltip tip="Remove this step">
+                  <button
+                    type="button"
+                    className="btn danger icon-square"
+                    onClick={() => setSteps(steps.filter((_, j) => j !== i))}
+                  >
+                    ✕
+                  </button>
+                </Tooltip>
+              </div>
             </div>
           ))}
           <div style={{ marginTop: 8 }}>

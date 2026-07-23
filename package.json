@@ -1,7 +1,7 @@
 {
   "name": "keebind",
-  "productName": "Keebind",
-  "version": "0.1.0",
+  "productName": "KeeBind",
+  "version": "0.2.0",
   "description": "Cross-platform keybinder and remapper for keyboards and macropads",
   "main": "./out/main/index.js",
   "private": true,

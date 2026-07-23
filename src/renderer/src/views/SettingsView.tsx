@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react'
-import type { AppInfo, ListenerStatus, Platform, Settings } from '../../../shared/types'
+import type { AppInfo, PermissionsInfo, Platform, Settings } from '../../../shared/types'
+import { PermissionPanel } from '../components/PermissionPanel'
 import { Tooltip } from '../components/Tooltip'
 
 export function SettingsView({ platform }: { platform: Platform }) {
   const [settings, setSettings] = useState<Settings | null>(null)
   const [info, setInfo] = useState<AppInfo | null>(null)
-  const [listener, setListener] = useState<ListenerStatus | null>(null)
+  const [permissions, setPermissions] = useState<PermissionsInfo | null>(null)
 
   useEffect(() => {
     window.keebind.getSettings().then(setSettings)
     window.keebind.appInfo().then(setInfo)
-    window.keebind.listenerStatus().then(setListener)
+    window.keebind.permissionsInfo().then(setPermissions)
   }, [])
 
   const patch = async (p: Partial<Settings>) => {
@@ -18,6 +19,8 @@ export function SettingsView({ platform }: { platform: Platform }) {
   }
 
   if (!settings) return null
+
+  const surface = platform === 'darwin' ? 'menu bar' : 'system tray'
 
   return (
     <div>
@@ -48,16 +51,39 @@ export function SettingsView({ platform }: { platform: Platform }) {
           <div style={{ flex: 1 }}>
             <strong>Launch at login</strong>
             <div className="muted small">
-              Start Keebind in the {platform === 'darwin' ? 'menu bar' : 'system tray'} when you log
-              in, so your bindings are always active.
+              Start KeeBind in the {surface} when you log in, so your bindings are always active.
             </div>
           </div>
-          <Tooltip tip="Automatically start Keebind when you log in">
+          <Tooltip tip="Automatically start KeeBind when you log in">
             <span className="switch">
               <input
                 type="checkbox"
                 checked={settings.launchAtLogin}
                 onChange={(e) => patch({ launchAtLogin: e.target.checked })}
+              />
+              <span className="track" />
+            </span>
+          </Tooltip>
+        </div>
+      </div>
+
+      <div className="panel">
+        <div className="row">
+          <div style={{ flex: 1 }}>
+            <strong>Show in {platform === 'darwin' ? 'Dock' : 'taskbar'}</strong>
+            <div className="muted small">
+              Turn off to make KeeBind {surface}-only. It keeps running either way, and the{' '}
+              {platform === 'darwin' ? 'menu bar' : 'tray'} icon never goes away.
+            </div>
+          </div>
+          <Tooltip
+            tip={`Show the KeeBind icon in the ${platform === 'darwin' ? 'Dock' : 'taskbar'} as well as the ${surface}`}
+          >
+            <span className="switch">
+              <input
+                type="checkbox"
+                checked={settings.showDockIcon}
+                onChange={(e) => patch({ showDockIcon: e.target.checked })}
               />
               <span className="track" />
             </span>
@@ -87,40 +113,13 @@ export function SettingsView({ platform }: { platform: Platform }) {
         </div>
       </div>
 
-      {platform === 'darwin' && (
-        <div className="panel">
-          <strong>macOS permissions</strong>
-          <div className="muted small" style={{ margin: '4px 0 10px' }}>
-            The Key Listener needs Accessibility and Input Monitoring access. Hotkey bindings and
-            VIA remapping work without them.
-          </div>
-          <div className="row">
-            <span className={`badge ${listener?.accessibilityGranted ? 'ok' : ''}`}>
-              Accessibility: {listener?.accessibilityGranted ? 'granted' : 'not granted'}
-            </span>
-            <div className="spacer" />
-            <Tooltip tip="Open System Settings → Privacy & Security → Accessibility">
-              <button
-                className="btn"
-                onClick={() => window.keebind.openPermissionSettings('accessibility')}
-              >
-                Accessibility…
-              </button>
-            </Tooltip>
-            <Tooltip tip="Open System Settings → Privacy & Security → Input Monitoring">
-              <button
-                className="btn"
-                onClick={() => window.keebind.openPermissionSettings('inputMonitoring')}
-              >
-                Input Monitoring…
-              </button>
-            </Tooltip>
-          </div>
-        </div>
+      {platform === 'darwin' && permissions && (
+        <PermissionPanel info={permissions} onChange={setPermissions} />
       )}
 
       <p className="muted small">
-        Keebind {info?.version} · {platform === 'darwin' ? 'macOS' : platform === 'win32' ? 'Windows' : platform}
+        KeeBind {info?.version} ·{' '}
+        {platform === 'darwin' ? 'macOS' : platform === 'win32' ? 'Windows' : platform}
       </p>
     </div>
   )

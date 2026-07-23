@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
-import type { Platform } from '../../shared/types'
+import type { NavigateRequest, Platform } from '../../shared/types'
+import { Logo } from './components/Logo'
 import { Tooltip } from './components/Tooltip'
+import { AboutView } from './views/AboutView'
 import { BindingsView } from './views/BindingsView'
 import { ListenerView } from './views/ListenerView'
 import { SettingsView } from './views/SettingsView'
 import { ViaView } from './views/ViaView'
 
-type View = 'bindings' | 'listener' | 'via' | 'settings'
+type View = NavigateRequest['view']
 
 const NAV: { id: View; label: string; tip: string }[] = [
   {
@@ -17,7 +19,7 @@ const NAV: { id: View; label: string; tip: string }[] = [
   {
     id: 'listener',
     label: 'Key Listener',
-    tip: 'Press any key on any connected keyboard and see what Keebind receives'
+    tip: 'Press any key on any connected keyboard and see what KeeBind receives'
   },
   {
     id: 'via',
@@ -27,27 +29,52 @@ const NAV: { id: View; label: string; tip: string }[] = [
   {
     id: 'settings',
     label: 'Settings',
-    tip: 'Theme, launch at login, and macOS permissions'
+    tip: 'Theme, startup, Dock icon, and macOS permissions'
+  },
+  {
+    id: 'about',
+    label: 'About',
+    tip: 'Version and app info'
   }
 ]
 
 export function App() {
   const [view, setView] = useState<View>('bindings')
   const [platform, setPlatform] = useState<Platform>('darwin')
+  /** Set when the tray popover asks us to open a specific binding. */
+  const [focusBindingId, setFocusBindingId] = useState<string | null>(null)
 
   useEffect(() => {
     window.keebind.appInfo().then((info) => setPlatform(info.platform))
   }, [])
 
+  // The tray popover and About window drive the main window through this.
+  useEffect(
+    () =>
+      window.keebind.onNavigate((request) => {
+        setView(request.view)
+        setFocusBindingId(request.bindingId ?? null)
+      }),
+    []
+  )
+
+  const go = (next: View) => {
+    setView(next)
+    setFocusBindingId(null)
+  }
+
   return (
     <div className="app">
       <nav className="sidebar">
-        <div className="brand">⌨ Keebind</div>
+        <div className="brand">
+          <Logo size={30} />
+          <span>KeeBind</span>
+        </div>
         {NAV.map((item) => (
           <Tooltip key={item.id} tip={item.tip}>
             <button
               className={`nav-item ${view === item.id ? 'active' : ''}`}
-              onClick={() => setView(item.id)}
+              onClick={() => go(item.id)}
             >
               {item.label}
             </button>
@@ -55,10 +82,17 @@ export function App() {
         ))}
       </nav>
       <main className="content">
-        {view === 'bindings' && <BindingsView platform={platform} />}
-        {view === 'listener' && <ListenerView platform={platform} />}
+        {view === 'bindings' && (
+          <BindingsView
+            platform={platform}
+            focusBindingId={focusBindingId}
+            onFocusHandled={() => setFocusBindingId(null)}
+          />
+        )}
+        {view === 'listener' && <ListenerView platform={platform} onOpenSettings={() => go('settings')} />}
         {view === 'via' && <ViaView />}
         {view === 'settings' && <SettingsView platform={platform} />}
+        {view === 'about' && <AboutView />}
       </main>
     </div>
   )

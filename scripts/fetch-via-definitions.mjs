@@ -1,5 +1,5 @@
 // Downloads the official VIA keyboard definitions (github.com/the-via/keyboards)
-// and packs the ones Keebind can use into resources/via-definitions.json,
+// and packs the ones KeeBind can use into resources/via-definitions.json,
 // indexed by "vendorId:productId" (lowercase hex, e.g. "0x445a:0x1421").
 //
 // Run on demand with: npm run via:definitions

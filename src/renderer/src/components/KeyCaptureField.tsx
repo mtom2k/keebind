@@ -69,6 +69,9 @@ interface Props {
  * Click "Capture", press the desired combo, and the accelerator fills in.
  * Escape cancels the capture; the text field allows manual entry for keys the
  * focused window can't see (Escape itself, or exotic macropad keys).
+ *
+ * The button has a fixed width because its label changes while capturing, and
+ * a wider label used to push the row around.
  */
 export function KeyCaptureField({ value, platform, onChange }: Props) {
   const [capturing, setCapturing] = useState(false)
@@ -105,11 +108,15 @@ export function KeyCaptureField({ value, platform, onChange }: Props) {
         tip={
           capturing
             ? 'Press the key or combo you want. Escape cancels.'
-            : 'Capture the hotkey by pressing it (instead of typing it out)'
+            : 'Capture the hotkey by pressing it, instead of typing it out'
         }
       >
-        <button type="button" className={`btn ${capturing ? 'primary' : ''}`} onClick={() => setCapturing(!capturing)}>
-          {capturing ? 'Press a key…' : 'Capture'}
+        <button
+          type="button"
+          className={`btn capture-btn ${capturing ? 'primary' : ''}`}
+          onClick={() => setCapturing(!capturing)}
+        >
+          {capturing ? 'Press a key' : 'Capture'}
         </button>
       </Tooltip>
     </div>

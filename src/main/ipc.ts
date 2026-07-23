@@ -1,10 +1,29 @@
-import { BrowserWindow, app, ipcMain, nativeTheme, shell } from 'electron'
-import type { Binding, KeyEventPayload, Platform, Settings } from '../shared/types'
+import { BrowserWindow, app, dialog, ipcMain, nativeTheme } from 'electron'
+import { release } from 'node:os'
+import type {
+  Binding,
+  KeyEventPayload,
+  NavigateRequest,
+  PickKind,
+  Platform,
+  Settings
+} from '../shared/types'
+import { notifyActionError, runAction } from './bindings/actions'
 import { checkConflicts } from './bindings/conflicts'
 import { bindingStatuses, refreshBindings } from './bindings/engine'
 import { listenerStatus, startListener, stopListener } from './listener'
+import {
+  openPermissionSettings,
+  permissionsInfo,
+  requestAccessibility,
+  requestInputMonitoring,
+  resetPermissions,
+  revealApp
+} from './permissions'
+import { hidePopover, refreshPopover, resizePopover, showAboutWindow } from './popover'
 import { store } from './store'
 import { updateTrayMenu } from './tray'
+import { applyDockVisibility, getMainWindow, setQuitting, showMainWindow } from './window'
 import { countBundledDefinitions, importDefinition } from './via/definitions'
 import { listViaDevices, openViaDevice, setViaKeycode } from './via/hid'
 import { KEYCODE_CATEGORIES } from './via/keycodes'
@@ -17,6 +36,7 @@ function broadcast(channel: string, payload: unknown): void {
 
 export function applySettings(settings: Settings): void {
   nativeTheme.themeSource = settings.theme
+  applyDockVisibility(settings.showDockIcon)
   try {
     // Only touch login items on a real change: macOS rejects the call for
     // unsigned dev builds, and startup shouldn't spam that error.
@@ -24,15 +44,27 @@ export function applySettings(settings: Settings): void {
       app.setLoginItemSettings({ openAtLogin: settings.launchAtLogin })
     }
   } catch {
-    // dev build or restricted environment — setting only works when packaged
+    // dev build or restricted environment; the setting only works when packaged
   }
   updateTrayMenu()
+}
+
+const OS_NAMES: Record<string, string> = { darwin: 'macOS', win32: 'Windows', linux: 'Linux' }
+
+/** Shows the main window and tells the renderer which view to open. */
+export function navigateMainWindow(request: NavigateRequest): void {
+  showMainWindow()
+  getMainWindow()?.webContents.send('app:navigate', request)
 }
 
 export function registerIpc(): void {
   ipcMain.handle('app:info', () => ({
     version: app.getVersion(),
-    platform: process.platform as Platform
+    platform: process.platform as Platform,
+    electron: process.versions.electron,
+    chrome: process.versions.chrome,
+    node: process.versions.node,
+    os: `${OS_NAMES[process.platform] ?? process.platform} ${release()} (${process.arch})`
   }))
 
   ipcMain.handle('settings:get', () => store.settings)
@@ -52,13 +84,28 @@ export function registerIpc(): void {
   ipcMain.handle('bindings:save', (_e, binding: Binding) => {
     const bindings = store.upsertBinding(binding)
     const statuses = refreshBindings()
+    refreshPopover()
     return { bindings, statuses }
   })
 
   ipcMain.handle('bindings:delete', (_e, id: string) => {
     const bindings = store.deleteBinding(id)
     const statuses = refreshBindings()
+    refreshPopover()
     return { bindings, statuses }
+  })
+
+  // Runs a binding's action without pressing its hotkey. Used by the Run
+  // button in the popover and by "Test" in the editor.
+  ipcMain.handle('bindings:run', async (_e, id: string) => {
+    const binding = store.bindings.find((b) => b.id === id)
+    if (!binding) throw new Error('That binding no longer exists.')
+    try {
+      await runAction(binding.action)
+    } catch (err) {
+      notifyActionError(binding.description || binding.accelerator, err)
+      throw err
+    }
   })
 
   ipcMain.handle('bindings:checkConflicts', (_e, args: { accelerator: string; excludeId?: string }) =>
@@ -71,12 +118,50 @@ export function registerIpc(): void {
   ipcMain.handle('listener:stop', () => stopListener())
   ipcMain.handle('listener:status', () => listenerStatus())
 
-  ipcMain.handle('permissions:open', (_e, pane: 'accessibility' | 'inputMonitoring') => {
-    const target =
-      pane === 'accessibility'
-        ? 'x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'
-        : 'x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent'
-    return shell.openExternal(target)
+  ipcMain.handle('permissions:open', (_e, pane: 'accessibility' | 'inputMonitoring') =>
+    openPermissionSettings(pane)
+  )
+  ipcMain.handle('permissions:info', () => permissionsInfo())
+  ipcMain.handle('permissions:request', (_e, pane: 'accessibility' | 'inputMonitoring') =>
+    pane === 'accessibility' ? requestAccessibility() : requestInputMonitoring()
+  )
+  ipcMain.handle('permissions:reveal', () => revealApp())
+  ipcMain.handle('permissions:reset', () => resetPermissions())
+
+  // Browse buttons next to app / file / folder targets. Most people don't
+  // know full paths off the top of their head.
+  ipcMain.handle('dialog:pick', async (_e, kind: PickKind) => {
+    const win = getMainWindow()
+    const mac = process.platform === 'darwin'
+    const options: Electron.OpenDialogOptions =
+      kind === 'folder'
+        ? { title: 'Choose a folder', properties: ['openDirectory'] }
+        : kind === 'app'
+          ? {
+              title: 'Choose an application',
+              // A .app bundle is really a folder, but macOS dialogs treat
+              // packages as files by default, so openFile selects the bundle.
+              properties: ['openFile'],
+              defaultPath: mac ? '/Applications' : process.env['ProgramFiles'],
+              filters: mac
+                ? [{ name: 'Applications', extensions: ['app'] }]
+                : [{ name: 'Programs', extensions: ['exe', 'bat', 'cmd', 'lnk'] }]
+            }
+          : { title: 'Choose a file', properties: ['openFile'] }
+
+    const result = win
+      ? await dialog.showOpenDialog(win, options)
+      : await dialog.showOpenDialog(options)
+    return result.canceled ? null : (result.filePaths[0] ?? null)
+  })
+
+  ipcMain.handle('popover:resize', (_e, height: number) => resizePopover(height))
+  ipcMain.handle('popover:hide', () => hidePopover())
+  ipcMain.handle('app:showAbout', () => showAboutWindow())
+  ipcMain.handle('app:navigate', (_e, request: NavigateRequest) => navigateMainWindow(request))
+  ipcMain.handle('app:quit', () => {
+    setQuitting(true)
+    app.quit()
   })
 
   ipcMain.handle('via:list', () => listViaDevices())

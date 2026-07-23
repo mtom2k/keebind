@@ -1,70 +1,106 @@
-import { useEffect, useState } from 'react'
-import type { KeyEventPayload, ListenerStatus, Platform } from '../../../shared/types'
+import { Fragment, useEffect, useState } from 'react'
+import type { ListenerStatus, PermissionsInfo, Platform } from '../../../shared/types'
+import { EMPTY_CHORD_STATE, chordToAccelerator, reduceChord, type Chord } from '../chord'
 import { Tooltip } from '../components/Tooltip'
 
-const HISTORY_LIMIT = 50
+/** Renders a chord as keycaps, modifiers included, so a combination reads as
+ *  one visual unit instead of "Command + Control + Shift +" as plain text. */
+function ChordKeys({ chord, large = false }: { chord: Chord; large?: boolean }) {
+  return (
+    <span className={`chord ${large ? 'large' : ''}`}>
+      {chord.keys.map((k, i) => (
+        <Fragment key={`${k.keycode}-${i}`}>
+          {i > 0 && <span className="chord-plus">+</span>}
+          <kbd className={k.modifier ? 'mod' : ''}>
+            {k.symbol && <span className="kbd-symbol">{k.symbol}</span>}
+            {k.name}
+          </kbd>
+        </Fragment>
+      ))}
+    </span>
+  )
+}
 
-export function ListenerView({ platform }: { platform: Platform }) {
+export function ListenerView({
+  platform,
+  onOpenSettings
+}: {
+  platform: Platform
+  onOpenSettings: () => void
+}) {
   const [status, setStatus] = useState<ListenerStatus | null>(null)
-  const [last, setLast] = useState<KeyEventPayload | null>(null)
-  const [history, setHistory] = useState<KeyEventPayload[]>([])
+  const [permissions, setPermissions] = useState<PermissionsInfo | null>(null)
+  const [chords, setChords] = useState(EMPTY_CHORD_STATE)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     window.keebind.listenerStatus().then(setStatus)
-    const unsubscribe = window.keebind.onKeyEvent((payload) => {
-      if (payload.type !== 'keydown') return
-      setLast(payload)
-      setHistory((h) => [payload, ...h].slice(0, HISTORY_LIMIT))
-    })
-    return unsubscribe
+    window.keebind.permissionsInfo().then(setPermissions)
   }, [])
+
+  // Re-subscribes if `platform` resolves after the first render, since the labels
+  // baked into each chord depend on it.
+  useEffect(
+    () => window.keebind.onKeyEvent((e) => setChords((s) => reduceChord(s, e, platform))),
+    [platform]
+  )
 
   const toggle = async () => {
     if (!status) return
-    setStatus(status.running ? await window.keebind.listenerStop() : await window.keebind.listenerStart())
+    setStatus(
+      status.running ? await window.keebind.listenerStop() : await window.keebind.listenerStart()
+    )
+    setPermissions(await window.keebind.permissionsInfo())
   }
 
-  const mods = (e: KeyEventPayload) =>
-    [
-      e.meta && (platform === 'darwin' ? 'Command' : 'Windows'),
-      e.ctrl && 'Control',
-      e.alt && (platform === 'darwin' ? 'Option' : 'Alt'),
-      e.shift && 'Shift'
-    ]
-      .filter(Boolean)
-      .join(' + ')
+  // Full permission controls live in Settings; here we only say whether the
+  // listener can actually work.
+  const permissionsOk =
+    permissions?.accessibility === 'granted' && permissions?.inputMonitoring !== 'denied'
+
+  // While keys are down, show what's down; otherwise the last completed chord.
+  const shown = chords.current ?? chords.last
+  const accelerator = shown && chordToAccelerator(shown, platform)
+  const hasHistory = chords.history.length > 0 || chords.last !== null
+
+  const copy = async () => {
+    if (!accelerator) return
+    try {
+      await navigator.clipboard.writeText(accelerator)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1400)
+    } catch {
+      // clipboard blocked, but the accelerator is on screen to copy by hand
+    }
+  }
 
   return (
     <div>
       <h1>Key Listener</h1>
       <p className="subtitle">
-        Press any key on any connected keyboard or macropad — wired, wireless, or Bluetooth — and
-        see exactly what Keebind receives.
+        Press any key on any connected keyboard or macropad, wired or wireless, and see exactly
+        what KeeBind receives. Hold a combination and the whole chord is captured together, so you
+        can read off a hotkey like ⌘⌃⇧F before binding it.
       </p>
 
-      {platform === 'darwin' && status && status.accessibilityGranted === false && (
-        <div className="alert warning">
-          <strong>⚠ macOS permissions needed.</strong> Global key listening requires Accessibility
-          and Input Monitoring access. Grant both to Keebind (or to Electron during development),
-          then restart the listener.
-          <div className="row" style={{ marginTop: 8 }}>
-            <Tooltip tip="Open System Settings → Privacy & Security → Accessibility">
-              <button
-                className="btn"
-                onClick={() => window.keebind.openPermissionSettings('accessibility')}
-              >
-                Accessibility settings
-              </button>
-            </Tooltip>
-            <Tooltip tip="Open System Settings → Privacy & Security → Input Monitoring">
-              <button
-                className="btn"
-                onClick={() => window.keebind.openPermissionSettings('inputMonitoring')}
-              >
-                Input Monitoring settings
-              </button>
-            </Tooltip>
-          </div>
+      {platform === 'darwin' && permissions && (
+        <div className={`perm-line ${permissionsOk ? 'ok' : 'missing'}`}>
+          <span className="perm-dot" />
+          <span>
+            {permissionsOk
+              ? 'macOS permissions granted.'
+              : 'This needs Accessibility and Input Monitoring access before it can see your keys.'}
+          </span>
+          {!permissionsOk && (
+            <>
+              <div className="spacer" />
+              <Tooltip tip="Go to Settings, where you can grant both permissions">
+                <button className="btn small-btn" onClick={onOpenSettings}>
+                  Fix in Settings
+                </button>
+              </Tooltip>
+            </>
+          )}
         </div>
       )}
 
@@ -80,17 +116,37 @@ export function ListenerView({ platform }: { platform: Platform }) {
             {status?.running ? '■ Stop listening' : '▶ Start listening'}
           </button>
         </Tooltip>
+        <Tooltip tip="Clear the current key and the whole capture history">
+          <button
+            className="btn"
+            disabled={!hasHistory}
+            onClick={() => setChords(EMPTY_CHORD_STATE)}
+          >
+            Clear
+          </button>
+        </Tooltip>
         {status?.running && (
           <span className="muted small">Listening… press keys on any connected device.</span>
         )}
       </div>
 
       <div className="key-display">
-        {last ? (
+        {shown ? (
           <>
-            {mods(last) && <span className="muted">{mods(last)} +</span>}
-            <kbd>{last.keyName}</kbd>
-            <span className="muted small">code {last.keycode}</span>
+            <ChordKeys chord={shown} large />
+            <span className="muted small">
+              {shown.keys
+                .filter((k) => !k.modifier)
+                .map((k) => `code ${k.keycode}`)
+                .join(', ')}
+            </span>
+            {accelerator && (
+              <Tooltip tip={`Copy "${accelerator}" so you can paste it into a binding's hotkey field`}>
+                <button className="btn small-btn" onClick={copy}>
+                  {copied ? '✓ Copied' : 'Copy accelerator'}
+                </button>
+              </Tooltip>
+            )}
           </>
         ) : (
           <span className="muted">
@@ -99,25 +155,30 @@ export function ListenerView({ platform }: { platform: Platform }) {
         )}
       </div>
 
-      {history.length > 0 && (
+      {chords.history.length > 0 && (
         <table className="key-history">
           <thead>
             <tr>
-              <th>Key</th>
-              <th>Modifiers</th>
-              <th>Keycode</th>
+              <th>Combination</th>
+              <th>Accelerator</th>
+              <th>Keycodes</th>
               <th>Time</th>
             </tr>
           </thead>
           <tbody>
-            {history.map((e, i) => (
-              <tr key={`${e.ts}-${i}`}>
+            {chords.history.map((chord, i) => (
+              <tr key={`${chord.ts}-${i}`}>
                 <td>
-                  <kbd>{e.keyName}</kbd>
+                  <ChordKeys chord={chord} />
                 </td>
-                <td className="muted">{mods(e) || '—'}</td>
-                <td className="muted">{e.keycode}</td>
-                <td className="muted">{new Date(e.ts).toLocaleTimeString()}</td>
+                <td className="muted mono">{chordToAccelerator(chord, platform) ?? 'n/a'}</td>
+                <td className="muted">
+                  {chord.keys
+                    .filter((k) => !k.modifier)
+                    .map((k) => k.keycode)
+                    .join(', ') || 'n/a'}
+                </td>
+                <td className="muted">{new Date(chord.ts).toLocaleTimeString()}</td>
               </tr>
             ))}
           </tbody>

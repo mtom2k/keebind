@@ -85,10 +85,10 @@ export function ViaView() {
       })
       if (verified !== keycode) {
         setError(
-          `The keyboard stored ${hex(verified)} instead of ${hex(keycode)} — the firmware may not support this keycode.`
+          `The keyboard stored ${hex(verified)} instead of ${hex(keycode)}. The firmware may not support this keycode.`
         )
       } else {
-        setNotice(`Key (${selectedKey.row},${selectedKey.col}) on layer ${layer} is now ${labelFor(verified)} — saved in the keyboard itself.`)
+        setNotice(`Key (${selectedKey.row},${selectedKey.col}) on layer ${layer} is now ${labelFor(verified)}, saved in the keyboard itself.`)
       }
       setSelectedKey(null)
     } catch (err) {
@@ -126,7 +126,7 @@ export function ViaView() {
     <div>
       <h1>VIA Devices</h1>
       <p className="subtitle">
-        Remap keys directly in the keyboard&apos;s own memory — changes persist even when you plug
+        Remap keys directly in the keyboard&apos;s own memory, so changes persist even when you plug
         the board into another computer. Requires a wired or 2.4&nbsp;GHz dongle connection
         (Bluetooth does not carry VIA&apos;s configuration channel).
       </p>
@@ -157,7 +157,7 @@ export function ViaView() {
             tip={
               d.hasDefinition
                 ? 'Read this keyboard’s layout and current keymap'
-                : 'No definition found — import this board’s VIA JSON below first'
+                : 'No definition found. Import this board’s VIA JSON below first.'
             }
           >
             <button className="btn primary" disabled={busy} onClick={() => openDevice(d.path)}>
@@ -206,7 +206,7 @@ export function ViaView() {
                     key={i}
                     type="button"
                     className={`kb-key ${selected ? 'selected' : ''}`}
-                    title={`Matrix (${k.row},${k.col}) — ${hex(code)}. Click to remap.`}
+                    title={`Matrix (${k.row},${k.col}), ${hex(code)}. Click to remap.`}
                     style={{
                       left: k.x * UNIT,
                       top: k.y * UNIT,
@@ -260,7 +260,7 @@ export function ViaView() {
                 onChange={(e) => setRawHex(e.target.value)}
                 style={{ width: 130 }}
               />
-              <Tooltip tip="Write this raw 16-bit QMK keycode (hex) — for layer taps, macros, or custom codes">
+              <Tooltip tip="Write this raw 16-bit QMK keycode (hex) for layer taps, macros, or custom codes">
                 <button
                   className="btn"
                   disabled={busy || !/^(0x)?[0-9a-f]{1,4}$/i.test(rawHex.trim())}

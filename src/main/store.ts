@@ -6,12 +6,19 @@ import type { Binding, Settings } from '../shared/types'
 interface StoreData {
   settings: Settings
   bindings: Binding[]
+  /**
+   * cdhash of the build that last received a macOS permission grant. Compared
+   * against the running binary to spot a stale privacy-pane entry left behind
+   * by an earlier build (see src/main/permissions.ts).
+   */
+  permissionIdentity?: string
 }
 
 const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
   launchAtLogin: false,
-  bindingsEnabled: true
+  bindingsEnabled: true,
+  showDockIcon: true
 }
 
 // Deliberately tiny hand-rolled JSON store instead of electron-store:
@@ -30,7 +37,9 @@ class Store {
       const raw = JSON.parse(readFileSync(this.file, 'utf8'))
       this.data = {
         settings: { ...DEFAULT_SETTINGS, ...raw.settings },
-        bindings: Array.isArray(raw.bindings) ? raw.bindings : []
+        bindings: Array.isArray(raw.bindings) ? raw.bindings : [],
+        permissionIdentity:
+          typeof raw.permissionIdentity === 'string' ? raw.permissionIdentity : undefined
       }
     } catch {
       this.data = { settings: { ...DEFAULT_SETTINGS }, bindings: [] }
@@ -49,6 +58,15 @@ class Store {
 
   get bindings(): Binding[] {
     return this.load().bindings
+  }
+
+  get permissionIdentity(): string | undefined {
+    return this.load().permissionIdentity
+  }
+
+  setPermissionIdentity(identity: string | undefined): void {
+    this.load().permissionIdentity = identity
+    this.save()
   }
 
   patchSettings(patch: Partial<Settings>): Settings {

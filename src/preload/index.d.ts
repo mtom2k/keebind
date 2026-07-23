@@ -1,8 +1,8 @@
-import type { KeebindApi } from './index'
+import type { KeeBindApi } from './index'
 
 declare global {
   interface Window {
-    keebind: KeebindApi
+    keebind: KeeBindApi
   }
 }
 

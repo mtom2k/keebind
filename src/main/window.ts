@@ -1,5 +1,6 @@
-import { BrowserWindow, app } from 'electron'
+import { BrowserWindow, app, nativeImage } from 'electron'
 import { join } from 'node:path'
+import { appIconPath } from './paths'
 
 let mainWindow: BrowserWindow | null = null
 let quitting = false
@@ -12,6 +13,21 @@ export function getMainWindow(): BrowserWindow | null {
   return mainWindow
 }
 
+/**
+ * macOS only. Packaged builds omit LSUIElement so the Dock icon is present by
+ * default; turning "Show in Dock" off hides it at runtime, which is what makes
+ * KeeBind a menu-bar-only app without a separate build flavour.
+ */
+export function applyDockVisibility(show: boolean): void {
+  if (process.platform !== 'darwin' || !app.dock) return
+  if (show) {
+    app.dock.setIcon(nativeImage.createFromPath(appIconPath()))
+    app.dock.show()
+  } else {
+    app.dock.hide()
+  }
+}
+
 export function createMainWindow(): BrowserWindow {
   if (mainWindow && !mainWindow.isDestroyed()) return mainWindow
 
@@ -22,7 +38,10 @@ export function createMainWindow(): BrowserWindow {
     minHeight: 540,
     show: false,
     autoHideMenuBar: true,
-    title: 'Keebind',
+    title: 'KeeBind',
+    // Windows/Linux take the taskbar + title-bar icon from here; macOS uses the
+    // bundle icon (and app.dock.setIcon above).
+    icon: nativeImage.createFromPath(appIconPath()),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js')
     }

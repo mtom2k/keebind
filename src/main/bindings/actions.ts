@@ -82,7 +82,7 @@ export async function runAction(spec: ActionSpec): Promise<void> {
 export function notifyActionError(description: string, err: unknown): void {
   const body = err instanceof Error ? err.message : String(err)
   new Notification({
-    title: `Keebind: "${description}" failed`,
+    title: `KeeBind: "${description}" failed`,
     body
   }).show()
 }

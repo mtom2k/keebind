@@ -1,5 +1,5 @@
 // QMK basic keycodes (== USB HID usage ids for the basic range) that the
-// remap picker offers. Anything else can be entered as raw hex — advanced
+// remap picker offers. Anything else can be entered as raw hex, so advanced
 // QMK codes (layers, macros, custom) pass straight through to the firmware.
 
 export interface KeycodeDef {

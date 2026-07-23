@@ -67,6 +67,22 @@ textarea {
   display: flex;
 }
 
+/* The tray popover is a transparent frameless window, so the page itself must
+   not paint a background; the panel below draws its own. */
+body[data-route='popover'] {
+  background: transparent;
+}
+
+body[data-route='popover'] #root {
+  height: auto;
+  display: block;
+}
+
+body[data-route='about'] #root {
+  height: auto;
+  display: block;
+}
+
 /* ---------- layout ---------- */
 .sidebar {
   width: 190px;
@@ -79,10 +95,17 @@ textarea {
 }
 
 .sidebar .brand {
-  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 18px;
   font-weight: 700;
-  padding: 4px 10px 14px;
-  letter-spacing: 0.02em;
+  padding: 4px 8px 16px;
+  letter-spacing: 0.01em;
+}
+
+.sidebar .brand svg {
+  flex-shrink: 0;
 }
 
 .nav-item {
@@ -109,6 +132,9 @@ textarea {
 
 .content {
   flex: 1;
+  /* Flex children default to min-width:auto, which lets wide content push the
+     pane instead of wrapping inside it. */
+  min-width: 0;
   overflow-y: auto;
   padding: 22px 26px;
 }
@@ -226,36 +252,47 @@ kbd {
   font-size: 12px;
 }
 
-/* ---------- tooltips ---------- */
+/* ---------- tooltips ----------
+   The bubble is portalled to <body> and positioned with `fixed` by
+   components/Tooltip.tsx. It deliberately has no positioning context here:
+   as a descendant of the trigger it was clipped by `.content`'s overflow and
+   by the window edges. `.placed` gates the fade-in until it is measured. */
 .tooltip {
-  position: relative;
   display: inline-flex;
 }
 
-.tooltip::after {
-  content: attr(data-tip);
-  position: absolute;
-  bottom: calc(100% + 7px);
-  left: 50%;
-  transform: translateX(-50%) scale(0.96);
+.tooltip-bubble {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 200;
   background: var(--text);
   color: var(--bg);
-  padding: 5px 9px;
+  padding: 6px 10px;
   border-radius: 6px;
   font-size: 11.5px;
-  line-height: 1.35;
+  line-height: 1.4;
   width: max-content;
-  max-width: 250px;
+  max-width: 260px;
   text-align: center;
-  opacity: 0;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
   pointer-events: none;
-  transition: opacity 0.12s ease 0.25s;
-  z-index: 60;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(3px);
+  transition:
+    opacity 0.12s ease,
+    transform 0.12s ease;
 }
 
-.tooltip:hover::after {
+.tooltip-bubble.below {
+  transform: translateY(-3px);
+}
+
+.tooltip-bubble.placed {
+  visibility: visible;
   opacity: 1;
-  transform: translateX(-50%) scale(1);
+  transform: translateY(0);
 }
 
 /* ---------- alerts / conflicts ---------- */
@@ -316,6 +353,182 @@ kbd {
   color: var(--ok);
 }
 
+.badge.neutral {
+  border-color: var(--border);
+  background: transparent;
+  color: var(--muted);
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+button.btn.small-btn {
+  padding: 4px 9px;
+  font-size: 12px;
+}
+
+/* Fixed width so the label swapping to "Press a key" can't reflow the row. */
+button.btn.capture-btn {
+  width: 106px;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+/* Square buttons for pin / run / manage. */
+.icon-btn {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.icon-btn:hover {
+  background: var(--kbd-bg);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.icon-btn.on {
+  color: var(--accent);
+}
+
+.icon-btn.danger:hover {
+  color: var(--danger);
+}
+
+/* All icons share a 16-unit viewBox, so a fixed box keeps every icon button
+   the same size regardless of which glyph is inside. */
+.icon-btn svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+.icon-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ---------- permissions ---------- */
+.perm-row {
+  margin-bottom: 8px;
+}
+
+.perm-stale,
+.perm-note,
+.perm-help {
+  margin-top: 12px;
+  padding-top: 11px;
+  border-top: 1px solid var(--warn-border);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.panel:not(.alert) .perm-stale,
+.panel:not(.alert) .perm-note,
+.panel:not(.alert) .perm-help {
+  border-top-color: var(--border);
+}
+
+.check-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.link-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.link-btn:hover {
+  text-decoration: underline;
+}
+
+/* ---------- binding editor ----------
+   Sized to use the width the window actually has. Every control that can
+   change its label has a fixed width, so nothing shifts while you use it. */
+.panel.editor {
+  padding: 18px 20px 16px;
+}
+
+.editor-title {
+  margin: 0 0 14px;
+  font-size: 15px;
+}
+
+.editor-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(280px, 1fr);
+  gap: 14px 20px;
+  margin-bottom: 12px;
+}
+
+.editor-action {
+  margin-top: 14px;
+}
+
+.editor-action > div {
+  margin-top: 6px;
+}
+
+.editor-footer {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+/* One-line permission status on the Key Listener. The controls themselves
+   live in Settings. */
+.perm-line {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  margin-bottom: 14px;
+  font-size: 12px;
+}
+
+.perm-line .perm-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--ok);
+}
+
+.perm-line.missing {
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  border-color: var(--warn-border);
+}
+
+.perm-line.missing .perm-dot {
+  background: var(--warn-text);
+}
+
 /* ---------- toggle switch ---------- */
 .switch {
   position: relative;
@@ -368,19 +581,63 @@ kbd {
 /* ---------- key listener ---------- */
 .key-display {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  min-height: 110px;
+  gap: 12px;
+  min-height: 118px;
+  padding: 16px 18px;
   border: 1px dashed var(--border);
   border-radius: 12px;
   background: var(--panel);
   margin-bottom: 14px;
 }
 
-.key-display kbd {
-  font-size: 22px;
-  padding: 10px 18px;
+/* A whole combination rendered as keycaps: modifiers get the same treatment as
+   the key itself, so "Command + Shift + F" reads as one chord rather than as
+   text with a single keycap on the end. */
+.chord {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.chord-plus {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.chord kbd {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.chord kbd.mod {
+  font-family: inherit;
+  color: var(--muted);
+}
+
+.chord .kbd-symbol {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Symbol', sans-serif;
+  font-size: 1.15em;
+  line-height: 1;
+  color: var(--text);
+}
+
+.chord.large {
+  gap: 9px;
+}
+
+.chord.large kbd {
+  font-size: 19px;
+  padding: 9px 15px;
+}
+
+.chord.large .chord-plus {
+  font-size: 15px;
 }
 
 .key-history {
@@ -391,9 +648,14 @@ kbd {
 .key-history th,
 .key-history td {
   text-align: left;
-  padding: 6px 10px;
+  padding: 7px 10px;
   border-bottom: 1px solid var(--border);
   font-size: 12px;
+  vertical-align: middle;
+}
+
+.key-history .chord {
+  justify-content: flex-start;
 }
 
 .key-history th {
@@ -503,18 +765,205 @@ kbd {
   color: var(--accent);
 }
 
-/* ---------- workflow steps ---------- */
+/* ---------- workflow steps ----------
+   A step has a lot of controls (type, target, browse, args, delay, reorder,
+   remove). They wrap in two groups rather than overflowing the pane, which is
+   what used to push the Save button off the right edge. */
 .step-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-  padding: 8px 0;
+  padding: 9px 0;
   border-bottom: 1px dashed var(--border);
 }
 
 .step-row .step-num {
   color: var(--muted);
   font-size: 12px;
-  width: 20px;
+  width: 18px;
   flex-shrink: 0;
+}
+
+.step-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 380px;
+  min-width: 0;
+}
+
+.step-tail {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+button.btn.icon-square {
+  width: 30px;
+  padding: 6px 0;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* ---------- tray popover ----------
+   A real window rather than a native Tray menu, so each row can hold two
+   buttons that appear on hover. See src/main/popover.ts. */
+.popover {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+}
+
+.popover-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.popover-title {
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.popover-empty {
+  padding: 16px 14px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.popover-list {
+  list-style: none;
+  margin: 0;
+  padding: 5px;
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.popover-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 8px;
+}
+
+.popover-item:hover {
+  background: var(--kbd-bg);
+}
+
+.popover-item-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.popover-item-name {
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.popover-item-sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+}
+
+.popover-item-sub kbd {
+  font-size: 10.5px;
+  padding: 1px 5px;
+  border-bottom-width: 1px;
+}
+
+.popover-failed {
+  color: var(--danger);
+  font-size: 11px;
+}
+
+/* The two buttons the request asked for: hidden until the row is hovered,
+   and kept reachable by keyboard. */
+.popover-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+.popover-item:hover .popover-actions,
+.popover-actions:focus-within {
+  opacity: 1;
+}
+
+.popover-foot {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 10px 7px 12px;
+  border-top: 1px solid var(--border);
+}
+
+/* ---------- about ---------- */
+.about {
+  max-width: 620px;
+}
+
+.about.standalone {
+  padding: 22px 24px;
+}
+
+.about-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.about-name {
+  margin: 0;
+  font-size: 21px;
+  letter-spacing: 0.01em;
+}
+
+.about-blurb {
+  line-height: 1.55;
+  margin: 0 0 16px;
+}
+
+.about-facts {
+  margin: 0 0 14px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 5px 16px;
+  font-size: 12px;
+}
+
+.about-facts > div {
+  display: contents;
+}
+
+.about-facts dt {
+  color: var(--muted);
+}
+
+.about-facts dd {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.about-note {
+  line-height: 1.5;
+}
+
+.about-buttons {
+  margin-top: 18px;
 }

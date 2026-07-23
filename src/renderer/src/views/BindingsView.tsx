@@ -10,25 +10,50 @@ function emptyBinding(): Binding {
     accelerator: '',
     description: '',
     enabled: true,
+    pinned: false,
     action: { type: 'launchApp', target: '' }
   }
 }
 
-export function BindingsView({ platform }: { platform: Platform }) {
+interface Props {
+  platform: Platform
+  /** Set when the tray popover asked to open one binding for editing. */
+  focusBindingId?: string | null
+  onFocusHandled?: () => void
+}
+
+export function BindingsView({ platform, focusBindingId, onFocusHandled }: Props) {
   const [bindings, setBindings] = useState<Binding[]>([])
   const [statuses, setStatuses] = useState<BindingStatus[]>([])
   const [editing, setEditing] = useState<Binding | null>(null)
   const [conflicts, setConflicts] = useState<ConflictHit[]>([])
+  const [ran, setRan] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
     const res = await window.keebind.listBindings()
     setBindings(res.bindings)
     setStatuses(res.statuses)
+    return res.bindings
   }, [])
 
   useEffect(() => {
     refresh()
   }, [refresh])
+
+  // Arriving from the tray popover's Manage button: open that binding.
+  useEffect(() => {
+    if (!focusBindingId) return
+    let cancelled = false
+    refresh().then((list) => {
+      if (cancelled) return
+      const match = list.find((b) => b.id === focusBindingId)
+      if (match) setEditing({ ...match })
+      onFocusHandled?.()
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [focusBindingId, refresh, onFocusHandled])
 
   useEffect(() => {
     if (!editing || !editing.accelerator) {
@@ -58,25 +83,39 @@ export function BindingsView({ platform }: { platform: Platform }) {
     setStatuses(res.statuses)
   }
 
-  const toggle = async (binding: Binding, enabled: boolean) => {
-    const res = await window.keebind.saveBinding({ ...binding, enabled })
+  const patchBinding = async (binding: Binding, patch: Partial<Binding>) => {
+    const res = await window.keebind.saveBinding({ ...binding, ...patch })
     setBindings(res.bindings)
     setStatuses(res.statuses)
   }
 
+  const runNow = async (binding: Binding) => {
+    try {
+      await window.keebind.runBinding(binding.id)
+      setRan(binding.id)
+      setTimeout(() => setRan(null), 1400)
+    } catch {
+      // the main process shows a notification with the reason
+    }
+  }
+
   const statusFor = (id: string) => statuses.find((s) => s.id === id)
+  const pinnedCount = bindings.filter((b) => b.pinned).length
+  const surface = platform === 'darwin' ? 'menu bar' : 'tray'
 
   return (
     <div>
       <h1>Bindings</h1>
       <p className="subtitle">
-        Global hotkeys that launch apps, open URLs, or run multi-step workflows.
+        Global hotkeys that launch apps, open URLs, or run multi-step workflows. Pin the ones you
+        use most and they show up in the {surface}.
       </p>
 
       {bindings.length === 0 && !editing && (
         <div className="panel muted">
-          No bindings yet. Tip: keys like <kbd>F13</kbd>–<kbd>F19</kbd> are unused by the OS and
-          make great macro keys — assign one on your board in the VIA tab, then bind it here.
+          No bindings yet. Keys like <kbd>F13</kbd> to <kbd>F19</kbd> are a good place to start,
+          since nothing in the OS uses them. Set one on your board in the VIA tab, then bind it
+          here.
         </div>
       )}
 
@@ -85,12 +124,12 @@ export function BindingsView({ platform }: { platform: Platform }) {
         return (
           <div className="binding-card" key={b.id}>
             <kbd>{b.accelerator}</kbd>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div className="desc">{b.description || summarizeAction(b.action)}</div>
               <div className="action-summary">{summarizeAction(b.action)}</div>
             </div>
             {b.enabled && st && !st.registered && (
-              <Tooltip tip="The OS refused this hotkey — another app or a system shortcut probably owns it">
+              <Tooltip tip="The OS refused this hotkey. Another app or a system shortcut probably owns it.">
                 <span className="badge">not registered</span>
               </Tooltip>
             )}
@@ -99,12 +138,32 @@ export function BindingsView({ platform }: { platform: Platform }) {
                 <span className="badge ok">active</span>
               </Tooltip>
             )}
-            <Tooltip tip={b.enabled ? 'Disable this binding' : 'Enable this binding'}>
+            <Tooltip
+              tip={
+                b.pinned
+                  ? `Unpin from the ${surface}`
+                  : `Pin to the ${surface} so you can run it with the mouse`
+              }
+            >
+              <button
+                className={`icon-btn ${b.pinned ? 'on' : ''}`}
+                aria-label={b.pinned ? 'Unpin this binding' : 'Pin this binding'}
+                onClick={() => patchBinding(b, { pinned: !b.pinned })}
+              >
+                {b.pinned ? '★' : '☆'}
+              </button>
+            </Tooltip>
+            <Tooltip tip="Run this binding now, without pressing the hotkey">
+              <button className="btn small-btn" onClick={() => runNow(b)}>
+                {ran === b.id ? '✓ Ran' : '▶ Run'}
+              </button>
+            </Tooltip>
+            <Tooltip tip={b.enabled ? 'Turn this binding off' : 'Turn this binding on'}>
               <span className="switch">
                 <input
                   type="checkbox"
                   checked={b.enabled}
-                  onChange={(e) => toggle(b, e.target.checked)}
+                  onChange={(e) => patchBinding(b, { enabled: e.target.checked })}
                 />
                 <span className="track" />
               </span>
@@ -123,6 +182,14 @@ export function BindingsView({ platform }: { platform: Platform }) {
         )
       })}
 
+      {bindings.length > 0 && !editing && (
+        <p className="muted small" style={{ margin: '10px 0 14px' }}>
+          {pinnedCount === 0
+            ? `Nothing pinned. Click the star on a binding to reach it from the ${surface}.`
+            : `${pinnedCount} pinned. Click the KeeBind icon in the ${surface} to run them.`}
+        </p>
+      )}
+
       {!editing && (
         <Tooltip tip="Create a new hotkey binding">
           <button className="btn primary" onClick={() => setEditing(emptyBinding())}>
@@ -132,12 +199,13 @@ export function BindingsView({ platform }: { platform: Platform }) {
       )}
 
       {editing && (
-        <div className="panel">
-          <h3 style={{ marginTop: 0 }}>
+        <div className="panel editor">
+          <h3 className="editor-title">
             {bindings.some((b) => b.id === editing.id) ? 'Edit binding' : 'New binding'}
           </h3>
-          <div className="row wrap" style={{ alignItems: 'flex-start', marginBottom: 10 }}>
-            <label className="field" style={{ flex: 1, minWidth: 260 }}>
+
+          <div className="editor-grid">
+            <label className="field">
               Hotkey
               <KeyCaptureField
                 value={editing.accelerator}
@@ -145,7 +213,7 @@ export function BindingsView({ platform }: { platform: Platform }) {
                 onChange={(accelerator) => setEditing({ ...editing, accelerator })}
               />
             </label>
-            <label className="field" style={{ flex: 1, minWidth: 200 }}>
+            <label className="field">
               Description
               <input
                 type="text"
@@ -162,20 +230,30 @@ export function BindingsView({ platform }: { platform: Platform }) {
                 {c.severity === 'warning' ? '⚠ ' : 'ℹ '}
                 {c.combo}
               </strong>{' '}
-              — {c.label}
+              {c.label}
               {c.note ? <div className="small">{c.note}</div> : null}
             </div>
           ))}
 
-          <label className="field" style={{ marginBottom: 6 }}>
+          <div className="field editor-action">
             Action
-          </label>
-          <ActionEditor
-            value={editing.action}
-            onChange={(action) => setEditing({ ...editing, action })}
-          />
+            <ActionEditor
+              value={editing.action}
+              onChange={(action) => setEditing({ ...editing, action })}
+            />
+          </div>
 
-          <div className="row" style={{ marginTop: 14 }}>
+          <div className="row editor-footer">
+            <Tooltip tip={`Show this binding in the ${surface}`}>
+              <label className="check-inline">
+                <input
+                  type="checkbox"
+                  checked={editing.pinned ?? false}
+                  onChange={(e) => setEditing({ ...editing, pinned: e.target.checked })}
+                />
+                Pin to {surface}
+              </label>
+            </Tooltip>
             <div className="spacer" />
             <Tooltip tip="Discard changes">
               <button className="btn" onClick={() => setEditing(null)}>
