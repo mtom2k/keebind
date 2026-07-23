@@ -1,0 +1,25 @@
+appId: com.keebind.app
+productName: Keebind
+directories:
+  buildResources: build
+files:
+  - out/**
+extraResources:
+  - from: resources
+    to: resources
+asarUnpack:
+  - '**/*.node'
+mac:
+  category: public.app-category.utilities
+  target:
+    - dmg
+    - zip
+  identity: null
+  extendInfo:
+    LSUIElement: true
+win:
+  target:
+    - nsis
+nsis:
+  oneClick: true
+  deleteAppDataOnUninstall: false
