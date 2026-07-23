@@ -5,14 +5,14 @@ Read this first. Then `ARCHITECTURE.md` for structure and `PROJECT_STATE.md` for
 ## Setup
 
 ```bash
-npm install            # also rebuilds native modules via electron-builder
+npm install
 npm run dev            # launch the app (menu bar / tray icon appears)
 npm run typecheck      # both TS projects (main+preload, renderer)
 ```
 
 Prereqs: Node ≥ 20 (developed on 24), npm. If Electron's binary is missing after install (`Error: Electron uninstall`), run `node node_modules/electron/install.js`.
 
-If native modules fail to load after an Electron version bump: `npx electron-builder install-app-deps`.
+Native modules need no build step: both `uiohook-napi` and `node-hid` ship N-API prebuilds for every platform/arch inside the npm package, and `electron-builder.yml` sets `npmRebuild: false` accordingly. If a native module ever fails to load, check that the package still ships a prebuild for your platform before reaching for `electron-builder install-app-deps`.
 
 ## Everyday workflows
 
@@ -26,9 +26,11 @@ If native modules fail to load after an Electron version bump: `npx electron-bui
 ## Packaging
 
 ```bash
-npm run build:mac   # dist/ dmg + zip, unsigned (identity: null)
-npm run build:win   # dist/ NSIS installer — cross-builds on macOS
+npm run build:mac   # dist/ dmg + zip (arm64), unsigned (identity: null)
+npm run build:win   # dist/ NSIS installer (x64) — cross-builds on macOS
 ```
+
+Windows cross-builds only work because `npmRebuild: false` skips @electron/rebuild (node-gyp can't cross-compile) and the bundled prebuilds cover win32-x64. Keep that flag if you add targets.
 
 Signing later: set a real identity in `electron-builder.yml` (mac) and add notarization; for win add a cert. `LSUIElement` is set for packaged macOS builds (menu-bar-only, no Dock).
 

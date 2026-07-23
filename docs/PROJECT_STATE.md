@@ -14,11 +14,12 @@ _Last updated: 2026-07-23_
 | VIA device remapping | ✅ Done (needs hardware test) | Raw-HID protocol (`0xFF60`/`0x61`), device discovery, layer tabs, layout render from VIA definition, keycode picker + raw hex, write-then-read-back verification. Custom definition import; optional bundled catalog via `npm run via:definitions`. |
 | Tooltips everywhere | ✅ Done | `Tooltip` component / `title` on all actionable controls, incl. tray menu items. |
 | Launch at login | ✅ Done | Works in packaged builds only (macOS restriction for unsigned dev builds). |
-| Packaging | ✅ Configured | electron-builder: mac dmg+zip (unsigned, `identity: null`), win NSIS. |
+| Packaging | ✅ Verified | electron-builder: mac dmg+zip arm64 (unsigned) and win NSIS x64 both build from this Mac (`npmRebuild: false` + bundled N-API prebuilds make the cross-build work). |
 
 ## Verified
 
 - macOS (this machine): dev run, tray, all four views, binding editor + conflict warnings, VIA flow end-to-end against the browser dev mock, typecheck + production bundle clean.
+- Packaging: `Keebind-0.1.0-arm64.dmg`/`.zip` and `Keebind Setup 0.1.0.exe` (x64) both produced successfully on this Mac.
 
 ## Not yet verified (open items)
 

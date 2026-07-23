@@ -9,6 +9,10 @@ extraResources:
     to: resources
 asarUnpack:
   - '**/*.node'
+# Both native deps (uiohook-napi, node-hid) ship N-API prebuilds for every
+# target platform, so no per-build rebuild is needed — and disabling it is
+# what makes Windows cross-builds from macOS possible.
+npmRebuild: false
 mac:
   category: public.app-category.utilities
   target:
@@ -19,7 +23,9 @@ mac:
     LSUIElement: true
 win:
   target:
-    - nsis
+    - target: nsis
+      arch:
+        - x64
 nsis:
   oneClick: true
   deleteAppDataOnUninstall: false
