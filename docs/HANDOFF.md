@@ -22,6 +22,7 @@ Prereqs: Node ≥ 20 (developed on 24), npm. If Electron's binary is missing aft
 - **Adding an IPC channel**: handler in `src/main/ipc.ts` → method on `KeeBindApi` in `src/preload/index.ts` → use via `window.keebind.*`. Keep `src/shared/types.ts` as the single home for payload types. Add it to `devMock.ts` too or the browser harness breaks.
 - **Working on the tray popover or About window**: both load the same renderer bundle at `#popover` and `#about` (see `src/renderer/src/main.tsx`). In a browser you can reach them by editing the hash and reloading, which is how they get styled and checked without Electron. The popover sizes its own window by reporting `offsetHeight` over `popover:resize`, so wrap its content in the element the `useLayoutEffect` measures.
 - **Pinning**: `Binding.pinned` drives the popover list. Anything that mutates bindings in `ipc.ts` must call `refreshPopover()`, or the menu bar shows a stale list.
+- **Reordering bindings**: the array order in `config.json` is the single source of truth. `bindings:reorder` validates the renderer's ID list through `Store.reorderBindings()` and refreshes the popover without re-registering shortcuts. The popover must continue filtering that array in place rather than applying its own sort.
 - **Editing conflict data**: `src/main/data/conflicts/darwin.json` / `win32.json`. `combos` match full accelerators; `keyNotes` match bare keys only. Severities: `warning` (OS owns it / reserved) vs `info` (caveat worth knowing).
 - **Regenerating icons**: edit `scripts/generate-icons.mjs`, run `npm run icons`. All icons are code-generated PNGs; don't add binary assets. Shapes are inside-tests in unit space (0..1) composited with 4×4 supersampling, so the same geometry renders cleanly at every size. If you change the mark, update `src/renderer/src/components/Logo.tsx` to match, since it hand-mirrors the "full" lockup as SVG.
 - **Changing the chord rules**: `src/renderer/src/chord.ts` is self-contained (`reduceChord` + `chordToAccelerator`) and is the only place the keydown/keyup stream is interpreted.
@@ -62,8 +63,14 @@ Expect `Identifier=com.keebind.app`, `Info.plist entries=…` and `Sealed Resour
 - The mac build is **ad-hoc signed**, not notarized. Gatekeeper will warn on first open (right-click → Open, or `xattr -dr com.apple.quarantine`), and because an ad-hoc signature is content-based, macOS permission grants reset on every new build. A Developer ID certificate + notarization fixes both; set `mac.identity` to the certificate name and add notarize options.
 - `hardenedRuntime: false` is required alongside ad-hoc signing, because hardened runtime enforces library validation and would reject the pre-signed Electron framework.
 - Changing `productName` changes the `userData` directory. The Keebind → KeeBind rename was case-only, and macOS/Windows filesystems are case-insensitive by default, so existing configs carry over. A non-case rename would strand them.
-- Bumping the version: `package.json` `version` only. electron-builder reads it for all artifact names.
+- Bumping the version: keep the root version in `package.json` and `package-lock.json` aligned. electron-builder reads it for all artifact names.
 - To sanity-check the renderer without Electron, `npm run dev` and open http://localhost:5173 in a browser (the dev mock takes over). A stale Electron instance holding the single-instance lock will make `npm run dev` exit immediately with code 0. Check `ps aux | grep Electron` if that happens.
+
+**Publishing a platform-qualified build:**
+
+- Until the Windows build has been exercised on real Windows hardware, use a SemVer pre-release such as `v0.2.9-macos.1` and mark its GitHub Release as a pre-release.
+- Attach the generated arm64 DMG and macOS ZIP. State prominently that the build is ad-hoc signed, not notarized, and that Windows remains unverified.
+- Use an annotated tag that exactly matches the package version with a leading `v`. After Windows validation, publish the unsuffixed tag (for example `v0.2.9`) as the full cross-platform release.
 
 ## Gotchas (learned the hard way)
 

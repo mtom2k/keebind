@@ -194,3 +194,19 @@ Append-only. Newest last. Each entry: context → decision → consequences.
 **Decision:** The primary Request permission action invokes only the native prompt. Do not call `openPermissionSettings()` from that request path; retain the separate manual Open Accessibility recovery action.
 
 **Consequences:** System Settings opens only when the user selects the native dialog's Open System Settings button. A previously dismissed prompt may remain suppressed by macOS, in which case the explicit manual recovery link is the fallback rather than an automatic navigation.
+
+## 29. Persist one binding order for the main list and pinned menu (2026-07-26)
+
+**Context:** Bindings previously appeared only in creation order. Adding an independent order field or sorting only the renderer would require migrations and could let the Bindings tab and pinned menu disagree.
+
+**Decision:** Treat the existing persisted `bindings` array order as canonical. Reorder it through a validated `bindings:reorder` IPC operation; do not modify binding contents or re-register shortcuts. The pinned popover filters this array in place. Provide an eight-dot HTML drag handle plus Up/Down keyboard movement, with visible before/after insertion markers.
+
+**Consequences:** One reorder is immediately reflected in both surfaces and survives restart with no schema migration. New bindings append to the end, edits preserve position, deletion removes one slot, and omitted or unknown reorder IDs cannot discard stored bindings.
+
+## 30. Qualify releases by tested platform until Windows validation (2026-07-26)
+
+**Context:** KeeBind builds for macOS and Windows, but the current feature set has only been exercised on macOS. Publishing an ordinary stable version would imply that both advertised platforms were validated.
+
+**Decision:** Publish the current build as the SemVer pre-release `v0.2.9-macos.1`, attach only its macOS artifacts, and mark the GitHub Release as a pre-release. Reserve the unsuffixed `v0.2.9` tag for a cross-platform release after Windows testing.
+
+**Consequences:** macOS users get an immutable, identifiable build without overstating Windows readiness. Additional macOS candidates can increment the suffix, while the eventual cross-platform release retains a conventional clean version.

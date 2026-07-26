@@ -7,7 +7,7 @@
  */
 import type { ReactElement } from 'react'
 
-export type IconName = 'play' | 'gear' | 'info' | 'power'
+export type IconName = 'play' | 'gear' | 'info' | 'power' | 'grip'
 
 const PATHS: Record<IconName, ReactElement> = {
   // Solid triangle, optically centred in the 16-unit box and sized to carry
@@ -35,6 +35,19 @@ const PATHS: Record<IconName, ReactElement> = {
     <g fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
       <path d="M8 2.2v5.4" />
       <path d="M4.4 4.6a5 5 0 1 0 7.2 0" />
+    </g>
+  ),
+  // Two columns of four dots, matching the familiar vertical drag handle.
+  grip: (
+    <g fill="currentColor">
+      <circle cx="5" cy="2" r="1.25" />
+      <circle cx="11" cy="2" r="1.25" />
+      <circle cx="5" cy="6" r="1.25" />
+      <circle cx="11" cy="6" r="1.25" />
+      <circle cx="5" cy="10" r="1.25" />
+      <circle cx="11" cy="10" r="1.25" />
+      <circle cx="5" cy="14" r="1.25" />
+      <circle cx="11" cy="14" r="1.25" />
     </g>
   )
 }

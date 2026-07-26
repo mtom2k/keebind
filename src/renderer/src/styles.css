@@ -363,6 +363,7 @@ kbd {
 }
 
 .binding-card {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -371,6 +372,46 @@ kbd {
   border-radius: 10px;
   padding: 11px 14px;
   margin-bottom: 8px;
+}
+
+.binding-card.dragging {
+  opacity: 0.45;
+}
+
+.binding-card.drop-before::before,
+.binding-card.drop-after::after {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+.binding-card.drop-before::before {
+  top: -5px;
+}
+
+.binding-card.drop-after::after {
+  bottom: -5px;
+}
+
+.icon-btn.drag-handle {
+  cursor: grab;
+  color: var(--muted);
+  touch-action: none;
+}
+
+.icon-btn.drag-handle:hover {
+  cursor: grab;
+  color: var(--text);
+}
+
+.icon-btn.drag-handle:active {
+  cursor: grabbing;
 }
 
 .binding-card .desc {

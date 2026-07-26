@@ -2,9 +2,12 @@ import { useCallback, useEffect, useState } from 'react'
 import { bindingDisplayName, summarizeAction } from '../../../shared/action-summary'
 import type { Binding, BindingStatus, ConflictHit, Platform } from '../../../shared/types'
 import { ActionEditor } from '../components/ActionEditor'
+import { Icon } from '../components/Icon'
 import { KeyCaptureField } from '../components/KeyCaptureField'
 import { Tooltip } from '../components/Tooltip'
 import { bindingMatchesQuery } from '../binding-search'
+
+type DropEdge = 'before' | 'after'
 
 function emptyBinding(accelerator = ''): Binding {
   return {
@@ -45,6 +48,9 @@ export function BindingsView({
   const [pendingDelete, setPendingDelete] = useState<Binding | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [draggedId, setDraggedId] = useState<string | null>(null)
+  const [dropTarget, setDropTarget] = useState<{ id: string; edge: DropEdge } | null>(null)
+  const [reordering, setReordering] = useState(false)
   const editingExisting = Boolean(editing && bindings.some((b) => b.id === editing.id))
 
   const refresh = useCallback(async () => {
@@ -103,6 +109,20 @@ export function BindingsView({
     window.addEventListener('keydown', dismiss)
     return () => window.removeEventListener('keydown', dismiss)
   }, [pendingDelete, deleting])
+
+  useEffect(() => {
+    if (!draggedId) return
+    const finishDrag = () => {
+      setDraggedId(null)
+      setDropTarget(null)
+    }
+    window.addEventListener('pointerup', finishDrag)
+    window.addEventListener('pointercancel', finishDrag)
+    return () => {
+      window.removeEventListener('pointerup', finishDrag)
+      window.removeEventListener('pointercancel', finishDrag)
+    }
+  }, [draggedId])
 
   // Existing bindings edit in a true focused modal: Escape discards and Tab
   // remains inside the editor instead of moving into the obscured page.
@@ -175,6 +195,37 @@ export function BindingsView({
     setStatuses(res.statuses)
   }
 
+  const reorderBinding = async (sourceId: string, targetId: string, edge: DropEdge) => {
+    if (reordering || sourceId === targetId) return
+    const source = bindings.find((binding) => binding.id === sourceId)
+    if (!source || !bindings.some((binding) => binding.id === targetId)) return
+
+    const previous = bindings
+    const next = bindings.filter((binding) => binding.id !== sourceId)
+    const targetIndex = next.findIndex((binding) => binding.id === targetId)
+    next.splice(targetIndex + (edge === 'after' ? 1 : 0), 0, source)
+    if (next.every((binding, index) => binding.id === bindings[index]?.id)) return
+
+    setBindings(next)
+    setReordering(true)
+    try {
+      const res = await window.keebind.reorderBindings(next.map((binding) => binding.id))
+      setBindings(res.bindings)
+      setStatuses(res.statuses)
+    } catch {
+      setBindings(previous)
+    } finally {
+      setReordering(false)
+    }
+  }
+
+  const moveBindingWithKeyboard = (binding: Binding, direction: -1 | 1) => {
+    const index = filteredBindings.findIndex((item) => item.id === binding.id)
+    const adjacent = filteredBindings[index + direction]
+    if (!adjacent) return
+    void reorderBinding(binding.id, adjacent.id, direction < 0 ? 'before' : 'after')
+  }
+
   const runNow = async (binding: Binding) => {
     try {
       const result = await window.keebind.runBinding(binding.id)
@@ -241,7 +292,58 @@ export function BindingsView({
       {filteredBindings.map((b) => {
         const st = statusFor(b.id)
         return (
-          <div className="binding-card" key={b.id}>
+          <div
+            className={[
+              'binding-card',
+              draggedId === b.id ? 'dragging' : '',
+              dropTarget?.id === b.id ? `drop-${dropTarget.edge}` : ''
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            data-binding-id={b.id}
+            key={b.id}
+            onPointerMove={(event) => {
+              if (!draggedId || draggedId === b.id || reordering) return
+              const rect = event.currentTarget.getBoundingClientRect()
+              const edge: DropEdge = event.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
+              if (dropTarget?.id !== b.id || dropTarget.edge !== edge) {
+                setDropTarget({ id: b.id, edge })
+              }
+            }}
+            onPointerUp={(event) => {
+              if (!draggedId) return
+              const sourceId = draggedId
+              const rect = event.currentTarget.getBoundingClientRect()
+              const edge: DropEdge = event.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
+              setDraggedId(null)
+              setDropTarget(null)
+              if (sourceId !== b.id) void reorderBinding(sourceId, b.id, edge)
+            }}
+          >
+            <Tooltip tip="Drag to reorder. You can also focus this handle and use the Up or Down arrow key.">
+              <button
+                className="icon-btn drag-handle"
+                disabled={reordering || bindings.length < 2}
+                aria-label={`Reorder ${bindingDisplayName(b)}`}
+                onPointerDown={(event) => {
+                  if (event.button !== 0 || reordering || bindings.length < 2) return
+                  event.preventDefault()
+                  setDraggedId(b.id)
+                  setDropTarget(null)
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'ArrowUp') {
+                    event.preventDefault()
+                    moveBindingWithKeyboard(b, -1)
+                  } else if (event.key === 'ArrowDown') {
+                    event.preventDefault()
+                    moveBindingWithKeyboard(b, 1)
+                  }
+                }}
+              >
+                <Icon name="grip" size={16} />
+              </button>
+            </Tooltip>
             <kbd>{b.accelerator}</kbd>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="desc">

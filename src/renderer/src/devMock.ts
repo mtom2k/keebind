@@ -128,6 +128,20 @@ export function installDevMock(): void {
       bindings = bindings.filter((b) => b.id !== id)
       return { bindings, statuses: statuses() }
     },
+    reorderBindings: async (ids) => {
+      const byId = new Map(bindings.map((binding) => [binding.id, binding]))
+      const seen = new Set<string>()
+      bindings = [
+        ...ids.flatMap((id) => {
+          const binding = byId.get(id)
+          if (!binding || seen.has(id)) return []
+          seen.add(id)
+          return [binding]
+        }),
+        ...bindings.filter((binding) => !seen.has(binding.id))
+      ]
+      return { bindings, statuses: statuses() }
+    },
     runBinding: async (id) => {
       const binding = bindings.find((b) => b.id === id)
       if (!binding) throw new Error('That binding no longer exists.')

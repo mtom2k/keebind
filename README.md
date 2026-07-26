@@ -8,7 +8,7 @@ KeeBind lives in the macOS menu bar / Windows notification area and does three t
 2. **Bindings**: give a hotkey a name and description, then launch an app, open a URL, open a file/folder, run a shell command, or run a **workflow** of several steps in order with optional delays. Individual bindings can require confirmation before every run; the fail-closed prompt discloses the hotkey, name, description, and complete action.
 3. **Conflict warnings**: when you pick a hotkey, KeeBind checks it against a per-OS database of system shortcuts (Spotlight, Mission Control, Win+L, PrtScn, F13 to F24 quirks, and so on) and warns you before you shadow something.
 
-Pinned menu-bar/tray bindings have the same dynamic name, hotkey, description, action, and target search as the main Bindings tab.
+Bindings can be reordered with a drag handle. Pinned menu-bar/tray bindings inherit that order and have the same dynamic name, hotkey, description, action, and target search as the main Bindings tab.
 
 ## Install / Run
 

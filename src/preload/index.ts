@@ -20,6 +20,8 @@ export interface KeeBindApi {
   listBindings(): Promise<{ bindings: Binding[]; statuses: BindingStatus[] }>
   saveBinding(binding: Binding): Promise<{ bindings: Binding[]; statuses: BindingStatus[] }>
   deleteBinding(id: string): Promise<{ bindings: Binding[]; statuses: BindingStatus[] }>
+  /** Persists the Bindings-tab order; pinned bindings inherit the same order */
+  reorderBindings(ids: string[]): Promise<{ bindings: Binding[]; statuses: BindingStatus[] }>
   /** Runs a binding now, returning denied when its confirmation is declined */
   runBinding(id: string): Promise<BindingRunResult>
   checkConflicts(accelerator: string, excludeId?: string): Promise<ConflictHit[]>
@@ -54,6 +56,7 @@ const api: KeeBindApi = {
   listBindings: () => ipcRenderer.invoke('bindings:list'),
   saveBinding: (binding) => ipcRenderer.invoke('bindings:save', binding),
   deleteBinding: (id) => ipcRenderer.invoke('bindings:delete', id),
+  reorderBindings: (ids) => ipcRenderer.invoke('bindings:reorder', ids),
   runBinding: (id) => ipcRenderer.invoke('bindings:run', id),
   checkConflicts: (accelerator, excludeId) =>
     ipcRenderer.invoke('bindings:checkConflicts', { accelerator, excludeId }),

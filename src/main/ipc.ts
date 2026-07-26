@@ -91,6 +91,15 @@ export function registerIpc(): void {
     return { bindings, statuses }
   })
 
+  ipcMain.handle('bindings:reorder', (_e, ids: string[]) => {
+    const bindings = store.reorderBindings(ids)
+    // Order does not affect shortcut registration, so preserve the current
+    // registrations and only refresh the pinned presentation.
+    const statuses = bindingStatuses()
+    refreshPopover()
+    return { bindings, statuses }
+  })
+
   // Manual and global runs share executeBinding, so confirmation and duplicate
   // suppression apply consistently to every entry point.
   ipcMain.handle('bindings:run', async (event, id: string) => {

@@ -104,6 +104,31 @@ class Store {
     this.save()
     return data.bindings
   }
+
+  /** Persists display order without changing binding contents. Unknown,
+   * duplicate or omitted IDs cannot discard records; omitted bindings remain
+   * at the end in their previous relative order. */
+  reorderBindings(ids: string[]): Binding[] {
+    const data = this.load()
+    const byId = new Map(data.bindings.map((binding) => [binding.id, binding]))
+    const seen = new Set<string>()
+    const ordered: Binding[] = []
+
+    for (const id of ids) {
+      const binding = byId.get(id)
+      if (binding && !seen.has(id)) {
+        ordered.push(binding)
+        seen.add(id)
+      }
+    }
+    for (const binding of data.bindings) {
+      if (!seen.has(binding.id)) ordered.push(binding)
+    }
+
+    data.bindings = ordered
+    this.save()
+    return data.bindings
+  }
 }
 
 export const store = new Store()
