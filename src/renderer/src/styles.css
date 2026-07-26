@@ -45,6 +45,15 @@
   box-sizing: border-box;
 }
 
+/* Electron inherits macOS's system-accent focus ring, which can appear as a
+   thick yellow/orange halo after clicking or tabbing to a control. KeeBind's
+   active, hover and disabled styles already communicate control state, so
+   suppress the native ring consistently across every window and control. */
+*:focus,
+*:focus-visible {
+  outline: none !important;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -245,14 +254,6 @@ textarea {
   color: var(--text);
   font-size: 13px;
   font-family: inherit;
-}
-
-input[type='text']:focus,
-input[type='search']:focus,
-textarea:focus,
-select:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: -1px;
 }
 
 label.field {

@@ -2,7 +2,7 @@
 
 _Last updated: 2026-07-26_
 
-## Status: v0.2.6, feature-complete v1, macOS-verified
+## Status: v0.2.7, feature-complete v1, macOS-verified
 
 | Feature | Status | Notes |
 |---|---|---|
@@ -18,6 +18,7 @@ _Last updated: 2026-07-26_
 | Conflict warnings | ✅ Done | Per-OS databases (`src/main/data/conflicts/darwin.json`, `win32.json`) incl. researched F13 to F24 guidance; also warns on duplicate in-app bindings. Checked live while editing a binding. |
 | macOS permissions | ✅ Done | Accessibility is the sole permission because uiohook uses an active `kCGEventTapOptionDefault`; Apple confirms Accessibility includes event listening. Input Monitoring UI, bridge, request and reset paths were removed. Request always opens the Accessibility pane when access remains denied, and status refreshes once per second/on focus. |
 | Tooltips everywhere | ✅ Done | Portal-rendered so nothing clips them; auto-flip and viewport clamping. `Tooltip` / `title` on all actionable controls, incl. tray menu items. |
+| Focus-ring suppression | ✅ Done | Electron/macOS native accent outlines—including the thick yellow/orange halo—are disabled throughout the renderer for buttons, navigation, inputs, selects, toggles and links. |
 | Launch at login | ✅ Done | Works in packaged builds only (macOS restriction for unsigned/ad-hoc dev builds). |
 | Packaging | ✅ Verified | electron-builder: mac dmg+zip arm64 (ad-hoc signed) and win NSIS x64 both build from this Mac (`npmRebuild: false` + bundled N-API prebuilds make the cross-build work). |
 
@@ -31,6 +32,7 @@ _Last updated: 2026-07-26_
 - Main window: native minimum/maximum constraints are 940×600 and 1200×800; every main view retains `scrollWidth === clientWidth` at both limits. Vertical content scrolling remains available for long bindings and settings.
 - Tab alignment: Bindings, Key Listener and Settings have identical left/right edges at maximum size, including when Settings is forced to overflow vertically; its scrollbar uses the gutter already reserved by the other views.
 - Post-permission transition: with the stale-record guidance present, removed, Settings remounted, and Key Listener visited between those states, the app shell stays 1200px and each functional view stays 958px wide. This reproduces the reported packaged-app sequence rather than only checking a fresh renderer.
+- Focus styling: sidebar navigation, Settings select and checkbox, binding text input and binding action button all remain programmatically focusable while reporting `outline-style: none` and no focus box shadow, including in `:focus-visible`.
 - Tray popover at 320px: pinned bindings listed, hovering a row reveals the Run and Manage buttons, empty state renders when nothing is pinned.
 - About window at 420x540: content fits without clipping the buttons.
 - Key Listener: shows a single green "permissions granted" line, or a warning line with a "Fix in Settings" button that lands on Settings.
@@ -43,7 +45,7 @@ _Last updated: 2026-07-26_
 - Chord capture: ⌘⌃⇧F records as **one** history row with accelerator `Command+Control+Shift+F`; overlapping unmodified keys stay separate rows; a bare modifier tap is captured with no accelerator; Clear empties display and history.
 - Tooltips: bubble portals to `<body>`, stays inside the viewport (`x: 8` clamp) and flips below the anchor at the top of the sidebar, which is the case that used to be cut off.
 - Packaging identity (the fix for the privacy-pane naming): `codesign -dv` on the packaged app reports `Identifier=com.keebind.app`, Info.plist bound, 252 sealed resources, and `codesign --verify --deep --strict` passes. Was `Identifier=Electron`, Info.plist not bound, no sealed resources.
-- Artifacts: `KeeBind-0.2.6-arm64.dmg` and `KeeBind-0.2.6-arm64-mac.zip` produced and checksum-verified; the bundle contains no obsolete Input Monitoring bridge/code and passes `codesign --verify --deep --strict`. The latest Windows artifact remains `KeeBind Setup 0.2.0.exe` (x64).
+- Artifacts: `KeeBind-0.2.7-arm64.dmg` and `KeeBind-0.2.7-arm64-mac.zip` produced and checksum-verified; the bundle contains no obsolete Input Monitoring bridge/code and passes `codesign --verify --deep --strict`. The latest Windows artifact remains `KeeBind Setup 0.2.0.exe` (x64).
 
 ## The stale permission problem (diagnosed 2026-07-23)
 

@@ -146,3 +146,11 @@ Append-only. Newest last. Each entry: context → decision → consequences.
 **Decision:** Make `#root` only establish viewport height and give `.app` explicit `width: 100%`, `height: 100%`, and `min-width: 0` before it lays out the sidebar and content pane.
 
 **Consequences:** View contents can no longer change the width of the application shell. In the reproduced packaged-app sequence, Settings remains 958px wide before, during, and after the permission guidance transition, matching Bindings and Key Listener exactly.
+
+## 23. Suppress native focus outlines globally (2026-07-26)
+
+**Context:** Electron inherits Chromium's macOS focus ring, colored by the user's system accent. It intermittently appeared as a thick yellow/orange and white halo around navigation buttons and form controls after mouse or keyboard focus, clashing with KeeBind's existing active and hover states.
+
+**Decision:** Disable outlines for both `:focus` and `:focus-visible` across all renderer elements and remove the separate accent outline previously applied to text fields and selects.
+
+**Consequences:** Mouse clicks and keyboard focus no longer draw an additional system-colored halo anywhere in the main window, popover, or About window. Controls remain focusable and keyboard-operable, but focus position is no longer represented by a dedicated visual ring.
