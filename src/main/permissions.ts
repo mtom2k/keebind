@@ -116,11 +116,10 @@ export function permissionsInfo(): PermissionsInfo {
  */
 export async function requestAccessibility(): Promise<PermissionsInfo> {
   if (process.platform === 'darwin') {
-    const granted = systemPreferences.isTrustedAccessibilityClient(true)
-    // macOS only shows the consent alert once. On later attempts the prompt
-    // call can return false with no visible response, so always take the user
-    // to the correct pane when access is still absent.
-    if (!granted) await openPermissionSettings()
+    // `prompt: true` presents macOS's own confirmation dialog. Its Open System
+    // Settings button performs the navigation if the user accepts. Opening the
+    // pane here as well races ahead of that choice and displays both at once.
+    systemPreferences.isTrustedAccessibilityClient(true)
   }
   return permissionsInfo()
 }

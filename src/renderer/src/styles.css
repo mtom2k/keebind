@@ -296,7 +296,10 @@ kbd {
   position: fixed;
   top: 0;
   left: 0;
-  z-index: 200;
+  /* Tooltips portal directly under <body>, outside the modal subtree. Keep
+     their global layer above modal backdrops (z-index 300) so help for modal
+     controls is never painted underneath the dialog. */
+  z-index: 400;
   background: var(--text);
   color: var(--bg);
   padding: 6px 10px;

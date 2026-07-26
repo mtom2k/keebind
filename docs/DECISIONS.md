@@ -186,3 +186,11 @@ Append-only. Newest last. Each entry: context → decision → consequences.
 **Decision:** Keep the new-binding editor inline, but render existing-binding edits as a centered modal over the current view. Autofocus Name, trap Tab within the modal, make Escape and the explicit Discard edits button abandon the draft, and keep Save as the only persistence path. Constrain the modal to the viewport and scroll long workflows inside it.
 
 **Consequences:** Edit now preserves context and clearly isolates unsaved changes without changing the creation workflow. Large workflow forms remain usable at the 940×600 minimum window size and cannot introduce page-level horizontal scrolling.
+
+## 28. Let the macOS Accessibility prompt own settings navigation (2026-07-26)
+
+**Context:** `isTrustedAccessibilityClient(true)` presents a native macOS confirmation with its own Open System Settings choice. KeeBind also deep-linked to the Accessibility pane immediately when that synchronous call returned false, so the pane opened behind or alongside the still-pending confirmation instead of waiting for the user's choice.
+
+**Decision:** The primary Request permission action invokes only the native prompt. Do not call `openPermissionSettings()` from that request path; retain the separate manual Open Accessibility recovery action.
+
+**Consequences:** System Settings opens only when the user selects the native dialog's Open System Settings button. A previously dismissed prompt may remain suppressed by macOS, in which case the explicit manual recovery link is the fallback rather than an automatic navigation.
