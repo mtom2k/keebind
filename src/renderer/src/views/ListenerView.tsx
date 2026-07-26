@@ -38,11 +38,27 @@ export function ListenerView({
 
   useEffect(() => {
     window.keebind.listenerStatus().then(setStatus)
-    window.keebind.permissionsInfo().then(setPermissions)
     window.keebind
       .getSettings()
       .then((settings) => setShowTechnicalDetails(settings.showTechnicalDetails))
   }, [])
+
+  useEffect(() => {
+    if (platform !== 'darwin') return
+    let cancelled = false
+    const refresh = async () => {
+      const next = await window.keebind.permissionsInfo()
+      if (!cancelled) setPermissions(next)
+    }
+    void refresh()
+    const timer = window.setInterval(refresh, 1000)
+    window.addEventListener('focus', refresh)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+      window.removeEventListener('focus', refresh)
+    }
+  }, [platform])
 
   // Re-subscribes if `platform` resolves after the first render, since the labels
   // baked into each chord depend on it.
@@ -53,16 +69,15 @@ export function ListenerView({
 
   const toggle = async () => {
     if (!status) return
-    setStatus(
+    const next =
       status.running ? await window.keebind.listenerStop() : await window.keebind.listenerStart()
-    )
+    setStatus(next)
     setPermissions(await window.keebind.permissionsInfo())
   }
 
   // Full permission controls live in Settings; here we only say whether the
   // listener can actually work.
-  const permissionsOk =
-    permissions?.accessibility === 'granted' && permissions?.inputMonitoring !== 'denied'
+  const permissionsOk = permissions?.accessibility === 'granted'
 
   // While keys are down, show what's down; otherwise the last completed chord.
   const shown = chords.current ?? chords.last
@@ -94,13 +109,13 @@ export function ListenerView({
           <span className="perm-dot" />
           <span>
             {permissionsOk
-              ? 'macOS permissions granted.'
-              : 'This needs Accessibility and Input Monitoring access before it can see your keys.'}
+              ? 'Accessibility granted — the listener can receive global keys.'
+              : 'Accessibility is required before KeeBind can listen for global keys.'}
           </span>
           {!permissionsOk && (
             <>
               <div className="spacer" />
-              <Tooltip tip="Go to Settings, where you can grant both permissions">
+              <Tooltip tip="Go to Settings to grant Accessibility">
                 <button className="btn small-btn" onClick={onOpenSettings}>
                   Fix in Settings
                 </button>
@@ -115,10 +130,16 @@ export function ListenerView({
           tip={
             status?.running
               ? 'Stop listening to global key presses'
-              : 'Start listening to global key presses (macOS will ask for permission the first time)'
+              : !permissionsOk
+                ? 'Grant Accessibility in Settings before listening'
+                : 'Start listening to global key presses'
           }
         >
-          <button className={`btn ${status?.running ? '' : 'primary'}`} onClick={toggle}>
+          <button
+            className={`btn ${status?.running ? '' : 'primary'}`}
+            disabled={!status || (!status.running && !permissionsOk)}
+            onClick={toggle}
+          >
             {status?.running ? '■ Stop listening' : '▶ Start listening'}
           </button>
         </Tooltip>

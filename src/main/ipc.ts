@@ -16,7 +16,6 @@ import {
   openPermissionSettings,
   permissionsInfo,
   requestAccessibility,
-  requestInputMonitoring,
   resetPermissions,
   revealApp
 } from './permissions'
@@ -115,13 +114,9 @@ export function registerIpc(): void {
   ipcMain.handle('listener:stop', () => stopListener())
   ipcMain.handle('listener:status', () => listenerStatus())
 
-  ipcMain.handle('permissions:open', (_e, pane: 'accessibility' | 'inputMonitoring') =>
-    openPermissionSettings(pane)
-  )
+  ipcMain.handle('permissions:open', () => openPermissionSettings())
   ipcMain.handle('permissions:info', () => permissionsInfo())
-  ipcMain.handle('permissions:request', (_e, pane: 'accessibility' | 'inputMonitoring') =>
-    pane === 'accessibility' ? requestAccessibility() : requestInputMonitoring()
-  )
+  ipcMain.handle('permissions:request', () => requestAccessibility())
   ipcMain.handle('permissions:reveal', () => revealApp())
   ipcMain.handle('permissions:reset', () => resetPermissions())
 

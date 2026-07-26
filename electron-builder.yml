@@ -9,9 +9,9 @@ extraResources:
     to: resources
 asarUnpack:
   - '**/*.node'
-# uiohook-napi ships N-API prebuilds for every target platform, so no per-build
-# rebuild is needed, and disabling it is what makes Windows cross-builds from
-# macOS possible.
+# uiohook-napi ships N-API prebuilds for every target platform, so dependency
+# rebuilding is unnecessary. Skipping it keeps Windows cross-builds from macOS
+# possible.
 npmRebuild: false
 mac:
   category: public.app-category.utilities
@@ -21,8 +21,8 @@ mac:
   # Ad-hoc signing, NOT `identity: null`. macOS privacy (TCC) identifies an app
   # by its code signature: skipping signing leaves Electron's own linker
   # signature in place (`Identifier=Electron`, Info.plist unbound), so the
-  # Accessibility / Input Monitoring panes attribute the request to whatever
-  # launched the app instead of to KeeBind. Ad-hoc signing binds Info.plist and
+  # Accessibility attributes the request to whatever launched the app instead
+  # of to KeeBind. Ad-hoc signing binds Info.plist and
   # seals resources, so the panes read "KeeBind" / com.keebind.app.
   # Note: an ad-hoc signature changes with every build, so grants must be
   # re-given after an update until there is a real Developer ID certificate.

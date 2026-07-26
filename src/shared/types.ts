@@ -78,9 +78,11 @@ export interface ListenerStatus {
   running: boolean
   /** macOS only: whether the app is a trusted Accessibility client */
   accessibilityGranted: boolean | null
+  /** Why a requested listener start did not begin */
+  blockedReason?: 'permissions' | 'hook-error'
 }
 
-export type PermissionState = 'granted' | 'denied' | 'unknown' | 'not-applicable'
+export type PermissionState = 'granted' | 'denied' | 'not-applicable'
 
 /** macOS privacy state. See src/main/permissions.ts for why this is subtle. */
 export interface PermissionsInfo {
@@ -88,8 +90,6 @@ export interface PermissionsInfo {
   /** False under `npm run dev`, where macOS grants to Electron, not KeeBind */
   packaged: boolean
   accessibility: PermissionState
-  /** macOS exposes no passive query, so this can remain unknown after a request */
-  inputMonitoring: PermissionState
   /** The name macOS lists in the privacy panes for this process */
   tccIdentity: string
   /** The bundle/executable the OS actually grants access to */

@@ -24,7 +24,9 @@ npm run build:win    # NSIS installer (cross-buildable from macOS)
 
 ## macOS notes
 
-- The **Key Listener** requires Accessibility + Input Monitoring. Use **Request permission** in Settings; macOS only lists an app in a privacy pane once the app has asked, so opening the pane first does nothing.
+- The **Key Listener requires Accessibility only**. KeeBind's active event tap is covered by Accessibility, which already includes listening access; Input Monitoring is not required. Use **Request permission** in Settings.
+- The permission badge refreshes while Settings is open, including after you grant access in System Settings; no app restart is needed.
+- When upgrading, quit the existing menu-bar copy before replacing `/Applications/KeeBind.app`. KeeBind is single-instance, so an older resident process otherwise remains the app you see. The Settings footer shows the running version.
 - After updating KeeBind, permissions have to be granted again, and System Settings will still show the old entry as enabled. That is macOS tying the grant to the exact copy of the app it was given to. Settings detects this and offers **Clear old records**.
 - Packaged builds are ad-hoc signed, so Gatekeeper warns on first open (right-click → Open). Because an ad-hoc signature changes with every build, permission grants have to be re-given after an update until there is a Developer ID certificate.
 - Under `npm run dev` macOS attributes permissions to the Electron bundle (or the terminal that launched it), not to KeeBind. The permissions panel says which name to look for.

@@ -12,7 +12,7 @@ npm run typecheck      # both TS projects (main+preload, renderer)
 
 Prereqs: Node ≥ 20 (developed on 24), npm. If Electron's binary is missing after install (`Error: Electron uninstall`), run `node node_modules/electron/install.js`.
 
-The native module needs no build step: `uiohook-napi` ships N-API prebuilds for every platform/arch inside the npm package, and `electron-builder.yml` sets `npmRebuild: false` accordingly. If it ever fails to load, check that the package still ships a prebuild for your platform before reaching for `electron-builder install-app-deps`.
+`uiohook-napi` uses its bundled prebuilds and `electron-builder.yml` keeps `npmRebuild: false`; do not run a blanket Electron native rebuild.
 
 ## Everyday workflows
 
@@ -27,7 +27,7 @@ The native module needs no build step: `uiohook-napi` ships N-API prebuilds for 
 
 ## Packaging: building a DMG or an EXE
 
-Both installers build from a single macOS machine. Node ≥ 20 and `npm install` are the only prerequisites; there is no Xcode/Visual Studio requirement, because neither native dependency is compiled here (see the prebuilds note above).
+Both installers build from a single macOS machine. Node ≥ 20 and `npm install` are the only prerequisites; Windows needs no Visual Studio toolchain because its native code comes from `uiohook-napi`'s bundled prebuild.
 
 ```bash
 npm run build:mac
@@ -53,11 +53,11 @@ Both scripts run `electron-vite build` first, so they always package the current
 codesign -dv dist/mac-arm64/KeeBind.app
 ```
 
-Expect `Identifier=com.keebind.app`, `Info.plist entries=…` and `Sealed Resources version=2`. If it says `Identifier=Electron` with `Info.plist=not bound`, signing was skipped and macOS will attribute Accessibility / Input Monitoring to whatever launched the app instead of to KeeBind (DECISIONS.md #8).
+Expect `Identifier=com.keebind.app`, `Info.plist entries=…` and `Sealed Resources version=2`. If it says `Identifier=Electron` with `Info.plist=not bound`, signing was skipped and macOS will attribute Accessibility to whatever launched the app instead of to KeeBind (DECISIONS.md #8).
 
 **Things that will bite you:**
 
-- Windows cross-builds only work because `npmRebuild: false` skips @electron/rebuild (node-gyp can't cross-compile) and the bundled prebuilds cover win32-x64. Keep that flag if you add targets.
+- Windows cross-builds only work because `npmRebuild: false` skips @electron/rebuild (node-gyp can't cross-compile) and the bundled uiohook prebuilds cover win32-x64. Keep that flag if you add targets.
 - The mac build is **ad-hoc signed**, not notarized. Gatekeeper will warn on first open (right-click → Open, or `xattr -dr com.apple.quarantine`), and because an ad-hoc signature is content-based, macOS permission grants reset on every new build. A Developer ID certificate + notarization fixes both; set `mac.identity` to the certificate name and add notarize options.
 - `hardenedRuntime: false` is required alongside ad-hoc signing, because hardened runtime enforces library validation and would reject the pre-signed Electron framework.
 - Changing `productName` changes the `userData` directory. The Keebind → KeeBind rename was case-only, and macOS/Windows filesystems are case-insensitive by default, so existing configs carry over. A non-case rename would strand them.
@@ -75,8 +75,9 @@ Expect `Identifier=com.keebind.app`, `Info.plist entries=…` and `Sealed Resour
 - **`app.setLoginItemSettings` throws/errors on unsigned dev builds** on macOS, so only call it on real changes, wrapped in try/catch (see `applySettings` in `src/main/ipc.ts`).
 - **uiohook must be stopped on quit** (`will-quit` → `shutdownListener()`), or its thread keeps the process alive.
 - **A grant is tied to the exact binary.** `codesign -d -r- KeeBind.app` shows a designated requirement of `cdhash` alone, so every rebuild invalidates every permission while System Settings keeps showing the old row ticked. If you are testing permissions, expect to press "Clear old records" (or `tccutil reset Accessibility com.keebind.app`) after each build. A Developer ID certificate is what ends this.
-- **macOS permissions are a signature problem, not a UI problem.** TCC identifies a client by its code signature. See `src/main/permissions.ts` and DECISIONS.md #8/#10 for the full story; the short version: packaged builds must be signed (ad-hoc is enough) or macOS blames the launching process, and an app only appears in a privacy pane *after* it has requested that permission, so the UI leads with "Request", not "Open pane". Under `npm run dev` the running bundle is genuinely `node_modules/.../Electron.app`, so grants land on "Electron" (or your terminal) and the panel says so.
-- **Input Monitoring can't be queried**, only requested. `requestInputMonitoring()` briefly creates the keyboard event tap used by the listener so macOS registers KeeBind in the pane. It runs on explicit action only and remains reported as `unknown` rather than claiming a grant that Electron cannot verify.
+- **macOS permissions are a signature problem, not a UI problem.** TCC identifies a client by its code signature. See `src/main/permissions.ts` and DECISIONS.md #8/#19 for the full story; packaged builds must be signed (ad-hoc is enough) or macOS blames the launching process. Under `npm run dev` the running bundle is genuinely `node_modules/.../Electron.app`, so Accessibility lands on "Electron" (or your terminal) and the panel says so.
+- **Accessibility is the only listener permission.** uiohook uses an active `kCGEventTapOptionDefault` and hard-checks `AXIsProcessTrusted`. Apple says Accessibility includes listening and posting, whereas Input Monitoring only includes listening. Do not reintroduce an Input Monitoring gate unless the macOS hook is first replaced with a passive `kCGEventTapOptionListenOnly`.
+- **Quit the resident app before testing an upgrade.** KeeBind holds a single-instance lock and stays in the menu bar after its window closes. Launching a DMG copy while an older `/Applications/KeeBind.app` process is alive can reactivate the old version. Check the Settings footer or `CFBundleShortVersionString` before diagnosing the new build.
 - **Windows is unverified**: everything Windows-specific (tray click behavior, taskbar icon, `cmd /c start` launching, conflict DB, NSIS) compiles and cross-builds but has not run on real Windows yet. That's a top open item in PROJECT_STATE.md.
 
 ## Docs discipline

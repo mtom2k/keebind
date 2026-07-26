@@ -2,7 +2,7 @@
 
 ## Stack
 
-Electron (43) + TypeScript + React 19, built with electron-vite (Vite 7), packaged with electron-builder. The only native dependency is the prebuilt N-API package `uiohook-napi` for global key listening.
+Electron (43) + TypeScript + React 19, built with electron-vite (Vite 7), packaged with electron-builder. The only native dependency is the prebuilt `uiohook-napi` package for global key listening.
 
 ## Process model
 
@@ -13,7 +13,8 @@ Electron (43) + TypeScript + React 19, built with electron-vite (Vite 7), packag
 │ popover.ts    tray popover window + About window         │
 │ paths.ts      resources/ + icon path resolution          │
 │ tray.ts       Tray icon: click = popover, right = menu   │
-│ permissions.ts macOS TCC: status, request, reveal        │
+│ permissions.ts macOS TCC: live status, request, reveal   │
+│ paths.ts      packaged/dev resource paths                │
 │ store.ts      hand-rolled JSON store (userData/config)   │
 │ ipc.ts        ALL ipcMain.handle channels live here      │
 │ listener.ts   uiohook wrapper + keycode→name mapping     │
@@ -50,13 +51,13 @@ Defined in `src/main/ipc.ts`, typed in `src/preload/index.ts` (`KeeBindApi`), ex
 | `bindings:list` / `bindings:save` / `bindings:delete` | invoke | CRUD; every mutation re-registers all shortcuts and returns fresh `BindingStatus[]` |
 | `bindings:run` | invoke | runs a binding's action now, without its hotkey (popover Run, editor Run) |
 | `bindings:checkConflicts` | invoke | `ConflictHit[]` for an accelerator (OS DB + in-app duplicates) |
-| `listener:start` / `listener:stop` / `listener:status` | invoke | uiohook control; status includes macOS accessibility flag |
+| `listener:start` / `listener:stop` / `listener:status` | invoke | uiohook control; status includes macOS Accessibility and a blocked reason |
 | `listener:key` | main→renderer push | `KeyEventPayload` stream while listening (both edges; `modifier` tags Shift/Ctrl/Alt/Meta) |
-| `permissions:open` | invoke | deep-link into macOS privacy panes |
-| `permissions:info` | invoke | `PermissionsInfo`, the state of both grants, TCC identity, packaged flag |
-| `permissions:request` | invoke | actively request a grant (this is what registers the app in a pane) |
+| `permissions:open` | invoke | deep-link into macOS Accessibility |
+| `permissions:info` | invoke | `PermissionsInfo`, Accessibility state, TCC identity, packaged flag |
+| `permissions:request` | invoke | actively request Accessibility |
 | `permissions:reveal` | invoke | show the app bundle in Finder for manual "+" adds |
-| `permissions:reset` | invoke | `tccutil reset` for both services, clearing stale grants |
+| `permissions:reset` | invoke | `tccutil reset Accessibility`, clearing a stale grant |
 | `dialog:pick` | invoke | native file picker for app / file / folder targets; null if cancelled |
 | `popover:resize` / `popover:hide` | invoke | the popover sizes itself to its content and dismisses itself |
 | `popover:refresh` | main→renderer push | the pinned list changed, or the popover was just shown |
@@ -74,7 +75,8 @@ Defined in `src/main/ipc.ts`, typed in `src/preload/index.ts` (`KeeBindApi`), ex
 - **Chords, not keystrokes**: `src/renderer/src/chord.ts` folds the raw keydown/keyup stream into whole combinations. Modifiers are derived from each event's flags (they can't get stuck when a keyup is missed); a chord is committed to history when it shrinks below its peak, so releasing ⌘⌃⇧F records one four-key chord rather than four shrinking ones. Unmodified keys never group, so typing rollover reads as "A" then "B". `chordToAccelerator` renders a chord as an Electron accelerator for the Bindings field.
 - **Three windows, one bundle.** `main.tsx` reads `location.hash` and renders the main app, the tray popover, or the About panel. The popover is a real frameless window rather than a native `Tray` menu, because a native menu row is a single click target and cannot hold the per-row Run and Manage buttons (see DECISIONS.md #11). It reports its content height over `popover:resize` and hides on blur.
 - **Permission grants are pinned to the binary.** Ad-hoc signing gives a designated requirement of `cdhash` alone, so a rebuild silently invalidates every grant while the privacy pane keeps showing the old row ticked. `permissions.ts` stores the cdhash it was granted under and reports `staleGrant` when the running build differs, with a `tccutil`-based reset to clear the dead record (DECISIONS.md #13).
+- **Accessibility is the sole listener permission.** libuiohook hard-codes an active `kCGEventTapOptionDefault` and checks `AXIsProcessTrusted` before starting. Apple states that Accessibility grants both event listening and posting; Input Monitoring is the narrower alternative for passive listen-only taps. Requiring both was incorrect. `startListener()` therefore checks Accessibility only and reports `blockedReason: permissions` when it is absent.
 - **Pinned bindings** carry `Binding.pinned`. Saving or deleting any binding calls `refreshPopover()` so the menu-bar list never goes stale. The popover's Manage button routes through `app:navigate`, which shows the main window and hands the renderer a `bindingId` to open.
 - **Tooltips are portalled**: `Tooltip` renders its bubble into `<body>` with `position: fixed`, measured and clamped to the viewport. As a CSS `::after` on the trigger it was clipped by `.content`'s overflow and by the window edges (see DECISIONS.md #9).
 - **Icons are code**: `scripts/generate-icons.mjs` writes every PNG with a self-contained encoder plus a supersampling rasterizer over unit-space shapes, so one geometry renders cleanly at 16px and 1024px. Three lockups of one mark: full (app icon), small (Windows tray), stencil (macOS template). `components/Logo.tsx` mirrors the full lockup as inline SVG for the UI.
-- **Packaging**: `electron-builder.yml`: `resources/` ships via extraResources, the native module is asar-unpacked, and mac is **ad-hoc signed** (`identity: '-'`, `hardenedRuntime: false`) so macOS privacy attributes grants to KeeBind (see DECISIONS.md #8). No `LSUIElement`: the Dock icon shows by default and `app.dock.hide()` removes it when "Show in Dock" is off.
+- **Packaging**: `electron-builder.yml` ships `resources/` via extraResources, unpacks dependency `.node` files, and ad-hoc signs macOS (`identity: '-'`, `hardenedRuntime: false`) so Accessibility is attributed to KeeBind (see DECISIONS.md #8). No `LSUIElement`: the Dock icon shows by default and `app.dock.hide()` removes it when "Show in Dock" is off.

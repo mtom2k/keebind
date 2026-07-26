@@ -1,7 +1,6 @@
 import { app, shell, systemPreferences } from 'electron'
 import { spawnSync } from 'node:child_process'
 import type { PermissionsInfo, PermissionState, Platform } from '../shared/types'
-import { pokeEventTap } from './listener'
 import { store } from './store'
 
 /**
@@ -26,15 +25,14 @@ import { store } from './store'
  *    remembering the cdhash we were granted under, and `resetPermissions()`
  *    clears the dead record with `tccutil`.
  *
- * 3. **An app only appears under Input Monitoring once it asks for it.** The
- *    pane lists clients that have requested `kTCCServiceListenEvent`, and
- *    Electron exposes no API for it. Creating the keyboard CGEventTap used by
- *    the listener triggers that request, so the UI invokes it explicitly.
+ * 3. **KeeBind does not require Input Monitoring.** libuiohook creates an
+ *    active `kCGEventTapOptionDefault` tap and explicitly checks
+ *    `AXIsProcessTrusted`. Apple documents Accessibility as granting both event
+ *    listening and posting; Input Monitoring is the narrower alternative for
+ *    passive listen-only taps. Asking for both created a second, nonfunctional
+ *    permission flow without adding any capability.
  */
 
-// Electron does not expose an Input Monitoring status query. Keep the state
-// unknown after requesting it rather than claiming the event tap was granted.
-let inputMonitoring: PermissionState = 'unknown'
 let cachedIdentity: string | null | undefined
 
 /** The `.app` bundle (macOS) or executable (Windows) the OS grants access to. */
@@ -81,64 +79,50 @@ function accessibility(): PermissionState {
   return systemPreferences.isTrustedAccessibilityClient(false) ? 'granted' : 'denied'
 }
 
-/** Remembers which build a grant belongs to, so we can spot a stale one later. */
-function rememberGrant(state: PermissionsInfo): void {
-  if (state.accessibility === 'granted' || state.inputMonitoring === 'granted') {
-    const id = codeIdentity()
-    if (id) store.setPermissionIdentity(id)
-  }
-}
-
 export function permissionsInfo(): PermissionsInfo {
   const access = accessibility()
   const identity = codeIdentity()
   const granted = store.permissionIdentity
 
-  // We were granted something under a different build, and the OS now says no.
-  // The pane will still be showing that older entry, ticked.
+  // We were granted Accessibility under a different build, and the OS now
+  // says no. Its pane can still show that older entry as ticked.
   const staleGrant =
     process.platform === 'darwin' &&
     access === 'denied' &&
-    Boolean(granted && identity && granted !== identity)
+    Boolean(identity && granted && granted !== identity)
 
-  return {
+  const info: PermissionsInfo = {
     platform: process.platform as Platform,
     packaged: app.isPackaged,
     accessibility: access,
-    inputMonitoring: process.platform === 'darwin' ? inputMonitoring : 'not-applicable',
     tccIdentity: tccIdentity(),
     appPath: appBundlePath(),
     staleGrant,
     codeIdentity: identity,
     canReset: process.platform === 'darwin' && app.isPackaged
   }
+
+  // Polling observes a grant made while System Settings is in front.
+  if (identity && access === 'granted' && granted !== identity) {
+    store.setPermissionIdentity(identity)
+  }
+
+  return info
 }
 
 /**
  * Prompts for Accessibility and registers KeeBind in the pane. Unlike the
  * passive check, `prompt: true` is what puts an entry in the list at all.
  */
-export function requestAccessibility(): PermissionsInfo {
-  if (process.platform === 'darwin') systemPreferences.isTrustedAccessibilityClient(true)
-  const info = permissionsInfo()
-  rememberGrant(info)
-  return info
-}
-
-/**
- * Registers KeeBind under Input Monitoring by briefly creating the keyboard
- * event tap used by the Key Listener. macOS does not expose a passive status
- * query, so the reported state remains unknown until the user verifies that
- * events arrive in the listener.
- */
-export async function requestInputMonitoring(): Promise<PermissionsInfo> {
-  if (process.platform !== 'darwin') return permissionsInfo()
-
-  pokeEventTap()
-  inputMonitoring = 'unknown'
-  const info = permissionsInfo()
-  rememberGrant(info)
-  return info
+export async function requestAccessibility(): Promise<PermissionsInfo> {
+  if (process.platform === 'darwin') {
+    const granted = systemPreferences.isTrustedAccessibilityClient(true)
+    // macOS only shows the consent alert once. On later attempts the prompt
+    // call can return false with no visible response, so always take the user
+    // to the correct pane when access is still absent.
+    if (!granted) await openPermissionSettings()
+  }
+  return permissionsInfo()
 }
 
 /**
@@ -149,27 +133,22 @@ export async function requestInputMonitoring(): Promise<PermissionsInfo> {
  */
 export function resetPermissions(): PermissionsInfo {
   if (process.platform === 'darwin') {
-    for (const service of ['Accessibility', 'ListenEvent']) {
-      try {
-        spawnSync('tccutil', ['reset', service, 'com.keebind.app'], { timeout: 5000 })
-      } catch {
-        // tccutil refuses on some configurations; the UI falls back to the
-        // manual "remove the row with the minus button" instructions.
-      }
+    try {
+      spawnSync('tccutil', ['reset', 'Accessibility', 'com.keebind.app'], { timeout: 5000 })
+    } catch {
+      // tccutil refuses on some configurations; the UI falls back to the
+      // manual "remove the row with the minus button" instructions.
     }
-    inputMonitoring = 'unknown'
-    store.setPermissionIdentity(undefined)
+    store.clearPermissionIdentity()
   }
   return permissionsInfo()
 }
 
-/** Deep-links into the relevant System Settings pane. */
-export function openPermissionSettings(pane: 'accessibility' | 'inputMonitoring'): Promise<void> {
-  const target =
-    pane === 'accessibility'
-      ? 'x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'
-      : 'x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent'
-  return shell.openExternal(target)
+/** Deep-links into the Accessibility pane in System Settings. */
+export function openPermissionSettings(): Promise<void> {
+  return shell.openExternal(
+    'x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'
+  )
 }
 
 /**

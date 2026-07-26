@@ -45,7 +45,6 @@ export function installDevMock(): void {
     platform: 'darwin',
     packaged: false,
     accessibility: 'granted',
-    inputMonitoring: 'granted',
     tccIdentity: 'Browser dev mock',
     appPath: '/dev/null',
     staleGrant: false,
@@ -145,19 +144,28 @@ export function installDevMock(): void {
         : [],
     listenerStart: async () => {
       listening = true
-      return { running: true, accessibilityGranted: true }
+      return {
+        running: true,
+        accessibilityGranted: true
+      }
     },
     listenerStop: async () => {
       listening = false
-      return { running: false, accessibilityGranted: true }
+      return {
+        running: false,
+        accessibilityGranted: true
+      }
     },
-    listenerStatus: async () => ({ running: listening, accessibilityGranted: true }),
+    listenerStatus: async () => ({
+      running: listening,
+      accessibilityGranted: true
+    }),
     openPermissionSettings: async () => {},
     permissionsInfo: async () => permissions,
     requestPermission: async () => permissions,
     revealApp: async () => {},
     resetPermissions: async () => {
-      permissions = { ...permissions, staleGrant: false, inputMonitoring: 'unknown' }
+      permissions = { ...permissions, staleGrant: false, accessibility: 'denied' }
       return permissions
     },
     // No native dialog in a browser tab, so hand back a believable path.

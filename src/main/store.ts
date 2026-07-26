@@ -7,9 +7,8 @@ interface StoreData {
   settings: Settings
   bindings: Binding[]
   /**
-   * cdhash of the build that last received a macOS permission grant. Compared
-   * against the running binary to spot a stale privacy-pane entry left behind
-   * by an earlier build (see src/main/permissions.ts).
+   * cdhash of the build that last received Accessibility. Compared against the
+   * running binary to spot an old privacy-pane record.
    */
   permissionIdentity?: string
 }
@@ -36,11 +35,19 @@ class Store {
     if (this.data) return this.data
     try {
       const raw = JSON.parse(readFileSync(this.file, 'utf8'))
+      const savedIdentities =
+        raw.permissionIdentities && typeof raw.permissionIdentities === 'object'
+          ? raw.permissionIdentities
+          : {}
       this.data = {
         settings: { ...DEFAULT_SETTINGS, ...raw.settings },
         bindings: Array.isArray(raw.bindings) ? raw.bindings : [],
         permissionIdentity:
-          typeof raw.permissionIdentity === 'string' ? raw.permissionIdentity : undefined
+          typeof raw.permissionIdentity === 'string'
+            ? raw.permissionIdentity
+            : typeof savedIdentities.accessibility === 'string'
+              ? savedIdentities.accessibility
+              : undefined
       }
     } catch {
       this.data = { settings: { ...DEFAULT_SETTINGS }, bindings: [] }
@@ -67,6 +74,11 @@ class Store {
 
   setPermissionIdentity(identity: string | undefined): void {
     this.load().permissionIdentity = identity
+    this.save()
+  }
+
+  clearPermissionIdentity(): void {
+    this.load().permissionIdentity = undefined
     this.save()
   }
 

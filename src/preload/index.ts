@@ -25,10 +25,10 @@ export interface KeeBindApi {
   listenerStart(): Promise<ListenerStatus>
   listenerStop(): Promise<ListenerStatus>
   listenerStatus(): Promise<ListenerStatus>
-  openPermissionSettings(pane: 'accessibility' | 'inputMonitoring'): Promise<void>
+  openPermissionSettings(): Promise<void>
   permissionsInfo(): Promise<PermissionsInfo>
   /** Prompts and registers KeeBind in the pane. See src/main/permissions.ts */
-  requestPermission(pane: 'accessibility' | 'inputMonitoring'): Promise<PermissionsInfo>
+  requestPermission(): Promise<PermissionsInfo>
   revealApp(): Promise<void>
   /** Clears KeeBind's macOS privacy records so a fresh grant can be made */
   resetPermissions(): Promise<PermissionsInfo>
@@ -59,9 +59,9 @@ const api: KeeBindApi = {
   listenerStart: () => ipcRenderer.invoke('listener:start'),
   listenerStop: () => ipcRenderer.invoke('listener:stop'),
   listenerStatus: () => ipcRenderer.invoke('listener:status'),
-  openPermissionSettings: (pane) => ipcRenderer.invoke('permissions:open', pane),
+  openPermissionSettings: () => ipcRenderer.invoke('permissions:open'),
   permissionsInfo: () => ipcRenderer.invoke('permissions:info'),
-  requestPermission: (pane) => ipcRenderer.invoke('permissions:request', pane),
+  requestPermission: () => ipcRenderer.invoke('permissions:request'),
   revealApp: () => ipcRenderer.invoke('permissions:reveal'),
   resetPermissions: () => ipcRenderer.invoke('permissions:reset'),
   pickPath: (kind) => ipcRenderer.invoke('dialog:pick', kind),

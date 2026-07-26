@@ -65,11 +65,26 @@ function attachOnce(): void {
 export function startListener(onEvent: (e: KeyEventPayload) => void): ListenerStatus {
   handler = onEvent
   if (!running) {
+    // libuiohook creates an active kCGEventTapOptionDefault tap and checks
+    // AXIsProcessTrusted before creating it. Accessibility grants both event
+    // listening and posting, so it is the one macOS permission this exact hook
+    // requires. Input Monitoring is an alternative for passive listen-only
+    // taps; requiring both was incorrect.
+    if (
+      process.platform === 'darwin' &&
+      !systemPreferences.isTrustedAccessibilityClient(false)
+    ) {
+      return listenerStatus('permissions')
+    }
+
     attachOnce()
-    // On macOS this is the call that makes the OS prompt for
-    // Accessibility / Input Monitoring the first time.
-    uIOhook.start()
-    running = true
+    try {
+      uIOhook.start()
+      running = true
+    } catch {
+      running = false
+      return listenerStatus('hook-error')
+    }
   }
   return listenerStatus()
 }
@@ -82,29 +97,16 @@ export function stopListener(): ListenerStatus {
   return listenerStatus()
 }
 
-/**
- * Creates and immediately tears down the keyboard event tap. macOS gates that
- * on Input Monitoring, so the attempt is what registers KeeBind in the pane.
- * Used by permissions.ts when no HID keyboard is available to ask with. Does
- * nothing while a real listening session is running, so it can't disturb one.
- */
-export function pokeEventTap(): void {
-  if (running) return
-  try {
-    uIOhook.start()
-    uIOhook.stop()
-  } catch {
-    // not permitted yet; the request itself is what mattered
-  }
-}
-
-export function listenerStatus(): ListenerStatus {
+export function listenerStatus(
+  blockedReason?: ListenerStatus['blockedReason']
+): ListenerStatus {
   return {
     running,
     accessibilityGranted:
       process.platform === 'darwin'
         ? systemPreferences.isTrustedAccessibilityClient(false)
-        : null
+        : null,
+    blockedReason
   }
 }
 

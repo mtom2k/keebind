@@ -98,3 +98,27 @@ Append-only. Newest last. Each entry: context → decision → consequences.
 **Context:** KeeBind is being narrowed to global hotkey bindings, key diagnostics, conflict warnings and tray access. Hardware discovery, definition management and firmware programming are no longer part of the solution.
 **Decision:** Remove the VIA tab and renderer, all VIA IPC and shared types, the raw-HID protocol and device/definition modules, the catalog-fetch script, browser mock support, and `node-hid`. Input Monitoring requests now use only the existing `uiohook` CGEventTap path.
 **Consequences:** KeeBind no longer identifies, opens, configures or remaps keyboards. There is no raw-HID access or definition import/catalog flow. The only native dependency is `uiohook-napi`; arbitrary software key-to-key remapping remains out of scope.
+
+## 17. Query Input Monitoring through Core Graphics in-process (2026-07-26)
+
+**Context:** Input Monitoring stayed at "not checked yet" because the request path always assigned `unknown` after poking uiohook. Electron exposes Accessibility status but no Input Monitoring equivalent, and using event-tap creation as both a request and a status check would re-request permission during polling. The settings view also fetched permissions only once, so grants made in System Settings were invisible until remount/restart.
+
+**Decision:** Add a minimal macOS-only N-API bridge exposing Apple's `CGPreflightListenEventAccess` and `CGRequestListenEventAccess`. It loads inside KeeBind's Electron main process so TCC evaluates KeeBind itself. Build it as a universal x86_64/arm64 resource before dev and Mac packaging. Poll passive permission state once per second while Settings is mounted and immediately on focus. Track the last-granted cdhash separately for Accessibility and Input Monitoring, and render the stale-record warning as a panel above both permission controls.
+
+**Consequences:** Input Monitoring now has a real `granted`/`denied` status, the request button invokes the API intended to present macOS consent, and either badge updates without restarting KeeBind. The bridge is 30 lines of C and adds Apple's Command Line Tools as a macOS development/build prerequisite; Windows cross-building is unchanged because the bridge is neither loaded nor compiled there.
+
+## 18. Refuse a modifier-only listener and fail closed on missing probes (2026-07-26)
+
+**Context:** A follow-up report still showed "not checked yet" and a listener that saw Command/Shift but not letters. Inspection found `/Applications/KeeBind.app` and both mounted DMGs were v0.2.0, which predates the Core Graphics bridge. Separately, two real product weaknesses made the symptom confusing: a missing bridge fell back to `unknown`, the renderer treated any Input Monitoring state except `denied` as healthy, and uiohook could start while macOS delivered only modifier flag changes.
+
+**Decision:** A missing bridge now falls back to `denied`, never `unknown`. Extract bridge loading into `macos-permissions.ts` so both the permission service and listener share the same passive check. Before starting uiohook on macOS, require both Accessibility and Input Monitoring; otherwise return `blockedReason: permissions`. The Key Listener also polls grants, requires exact `granted` states, disables Start while blocked, and explains why modifiers may appear without letters.
+
+**Consequences:** KeeBind cannot present a partially working listener as healthy, and "not checked yet" is no longer possible in a normally built macOS app. Upgrades still require replacing and relaunching the installed copy, so the README and handoff now call out the single-instance/menu-bar trap explicitly.
+
+## 19. Accessibility is the sole macOS listener permission (2026-07-26)
+
+**Context:** Repeated attempts to make Input Monitoring requestable exposed a wrong premise. Apple's current DTS guidance says Accessibility grants both event posting and listening, while Input Monitoring grants listening only, and an app normally should not need both. The bundled libuiohook source creates `kCGEventTapOptionDefault`, an active filter, and refuses to start unless `AXIsProcessTrusted` succeeds. It does not use a passive `kCGEventTapOptionListenOnly`. Therefore Accessibility already grants everything this exact hook needs; the Input Monitoring request was redundant, could legitimately produce no separate prompt after Accessibility, and incorrectly blocked the listener.
+
+**Decision:** Make Accessibility the only macOS permission. Remove the Input Monitoring row, IPC branch, Core Graphics bridge, build script, status field, stale-identity tracking and `ListenEvent` reset. Gate listener startup only on Electron's Accessibility check. Continue polling that check in Settings and the Key Listener so a grant is reflected without restarting. If Electron's Accessibility prompt call still returns false, open the Accessibility pane automatically, because macOS may suppress repeat consent alerts.
+
+**Consequences:** There is no permission ordering question and no nonfunctional Input Monitoring button. The app returns to one third-party native dependency with no local native build step. If KeeBind later replaces uiohook with a truly passive `kCGEventTapOptionListenOnly`, the correct least-privilege design would instead request Input Monitoring alone and remove Accessibility; that would be a separate native-hook change.

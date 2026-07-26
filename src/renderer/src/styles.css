@@ -505,7 +505,11 @@ button.btn.capture-btn {
   margin-bottom: 8px;
 }
 
-.perm-stale,
+.perm-stale-banner {
+  font-size: 12px;
+  line-height: 1.55;
+}
+
 .perm-note,
 .perm-help {
   margin-top: 12px;
@@ -515,7 +519,6 @@ button.btn.capture-btn {
   line-height: 1.55;
 }
 
-.panel:not(.alert) .perm-stale,
 .panel:not(.alert) .perm-note,
 .panel:not(.alert) .perm-help {
   border-top-color: var(--border);

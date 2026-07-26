@@ -11,8 +11,33 @@ export function SettingsView({ platform }: { platform: Platform }) {
   useEffect(() => {
     window.keebind.getSettings().then(setSettings)
     window.keebind.appInfo().then(setInfo)
-    window.keebind.permissionsInfo().then(setPermissions)
   }, [])
+
+  useEffect(() => {
+    if (platform !== 'darwin') return
+
+    let cancelled = false
+    let checking = false
+    const refreshPermissions = async () => {
+      if (checking) return
+      checking = true
+      try {
+        const next = await window.keebind.permissionsInfo()
+        if (!cancelled) setPermissions(next)
+      } finally {
+        checking = false
+      }
+    }
+
+    void refreshPermissions()
+    const timer = window.setInterval(refreshPermissions, 1000)
+    window.addEventListener('focus', refreshPermissions)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+      window.removeEventListener('focus', refreshPermissions)
+    }
+  }, [platform])
 
   const patch = async (p: Partial<Settings>) => {
     setSettings(await window.keebind.setSettings(p))
