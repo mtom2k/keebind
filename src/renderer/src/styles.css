@@ -200,12 +200,23 @@ button.btn.danger {
   color: var(--danger);
 }
 
+button.btn.danger-fill {
+  color: #fff;
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+button.btn.danger-fill:hover {
+  filter: brightness(1.08);
+}
+
 button.btn:disabled {
   opacity: 0.5;
   cursor: default;
 }
 
 input[type='text'],
+input[type='search'],
 input[type='number'],
 select,
 textarea {
@@ -219,6 +230,7 @@ textarea {
 }
 
 input[type='text']:focus,
+input[type='search']:focus,
 textarea:focus,
 select:focus {
   outline: 2px solid var(--accent);
@@ -317,6 +329,17 @@ kbd {
 }
 
 /* ---------- bindings list ---------- */
+.binding-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.binding-search input {
+  width: min(420px, 100%);
+}
+
 .binding-card {
   display: flex;
   align-items: center;
@@ -336,6 +359,63 @@ kbd {
   color: var(--muted);
   font-size: 12px;
   margin-top: 2px;
+}
+
+/* ---------- confirmation modal ---------- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(8, 8, 12, 0.48);
+}
+
+.confirm-modal {
+  width: min(420px, 100%);
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+}
+
+.confirm-modal h2 {
+  margin: 0 0 6px;
+  font-size: 17px;
+}
+
+.confirm-modal p {
+  margin: 0 0 14px;
+  line-height: 1.5;
+}
+
+.delete-binding-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.delete-binding-preview strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.delete-binding-preview kbd {
+  flex-shrink: 0;
+}
+
+.confirm-actions {
+  margin-top: 16px;
 }
 
 .badge {

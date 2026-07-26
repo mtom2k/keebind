@@ -7,6 +7,8 @@ import { showMainWindow, setQuitting } from './window'
 
 let tray: Tray | null = null
 
+const TRAY_TOOLTIP = 'KeeBind — Click for pinned bindings; right-click for options.'
+
 /**
  * Left-click opens the pinned-bindings popover (see popover.ts); right-click
  * gets this menu with the app-wide switches. On macOS we deliberately do not
@@ -72,7 +74,10 @@ export function updateTrayMenu(): void {
 export function createTray(): Tray {
   if (tray) return tray
   tray = new Tray(nativeImage.createFromPath(trayIconPath()))
-  tray.setToolTip('KeeBind. Click for pinned bindings, right-click for options.')
+  // Native hover text for the macOS menu-bar icon and Windows notification
+  // area icon. Windows taskbar hover text for the main window comes from its
+  // BrowserWindow title ("KeeBind").
+  tray.setToolTip(TRAY_TOOLTIP)
   updateTrayMenu()
 
   tray.on('click', () => togglePopover(tray!))
