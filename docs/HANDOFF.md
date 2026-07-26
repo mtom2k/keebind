@@ -68,6 +68,9 @@ Expect `Identifier=com.keebind.app`, `Info.plist entries=…` and `Sealed Resour
 
 - **A native Tray menu can't hold two buttons per row.** That is why the pinned-bindings panel is a real window (DECISIONS.md #11). If you add rows to it, remember macOS gets no `setContextMenu` call, because attaching a menu hijacks left-click.
 - **Flex children default to `min-width: auto`.** A wide row (the workflow step editor) will push its container instead of wrapping, which silently scrolls the whole content pane sideways and hides the Save button. `.content` and `.step-fields` set `min-width: 0` for this reason.
+- **Keep main-window limits centralized.** `MAIN_WINDOW_BOUNDS` in `src/main/window.ts` defines the default, minimum and maximum size. The 940px minimum leaves enough space for the sidebar, content padding and two-column binding editor; re-check every view for horizontal overflow before reducing it.
+- **Keep the functional tabs width-stable.** Bindings, Key Listener and Settings use `.main-view`, while `.content` reserves a `scrollbar-gutter`. Without that gutter, opening taller permission help in Settings can make only that tab narrower when its vertical scrollbar appears.
+- **The app shell must fill `#root`.** `#root` used to be a flex container while `.app` had no width, so `.app` became an intrinsically sized flex child: long Listener text stretched it across the viewport, but shorter Settings content let it collapse after the stale-record banner disappeared. Keep `.app { width: 100%; height: 100%; }`; view-level `width: 100%` cannot repair a shrunken shell.
 - **Controls whose label changes need a fixed width**, or the row reflows mid-interaction. See `.capture-btn`.
 
 - **Version pins matter**: `electron-vite@5` needs `vite@7`, which needs `@vitejs/plugin-react@5` (v6 requires Vite 8). Don't blindly bump these three independently.

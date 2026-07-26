@@ -5,6 +5,18 @@ import { appIconPath } from './paths'
 let mainWindow: BrowserWindow | null = null
 let quitting = false
 
+// The renderer is designed around a 190px sidebar and a two-column editor.
+// Keep enough room for that layout while still allowing a useful, bounded
+// amount of user resizing.
+export const MAIN_WINDOW_BOUNDS = {
+  width: 1000,
+  height: 680,
+  minWidth: 940,
+  minHeight: 600,
+  maxWidth: 1200,
+  maxHeight: 800
+} as const
+
 export function setQuitting(value: boolean): void {
   quitting = value
 }
@@ -32,10 +44,11 @@ export function createMainWindow(): BrowserWindow {
   if (mainWindow && !mainWindow.isDestroyed()) return mainWindow
 
   mainWindow = new BrowserWindow({
-    width: 1000,
-    height: 680,
-    minWidth: 780,
-    minHeight: 540,
+    ...MAIN_WINDOW_BOUNDS,
+    resizable: true,
+    // Keep OS maximize/full-screen actions from bypassing the size ceiling.
+    maximizable: false,
+    fullscreenable: false,
     show: false,
     autoHideMenuBar: true,
     title: 'KeeBind',

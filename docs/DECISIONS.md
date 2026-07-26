@@ -122,3 +122,27 @@ Append-only. Newest last. Each entry: context → decision → consequences.
 **Decision:** Make Accessibility the only macOS permission. Remove the Input Monitoring row, IPC branch, Core Graphics bridge, build script, status field, stale-identity tracking and `ListenEvent` reset. Gate listener startup only on Electron's Accessibility check. Continue polling that check in Settings and the Key Listener so a grant is reflected without restarting. If Electron's Accessibility prompt call still returns false, open the Accessibility pane automatically, because macOS may suppress repeat consent alerts.
 
 **Consequences:** There is no permission ordering question and no nonfunctional Input Monitoring button. The app returns to one third-party native dependency with no local native build step. If KeeBind later replaces uiohook with a truly passive `kCGEventTapOptionListenOnly`, the correct least-privilege design would instead request Input Monitoring alone and remove Accessibility; that would be a separate native-hook change.
+
+## 20. Bound the main window instead of fixing its size (2026-07-26)
+
+**Context:** Shrinking the main window below the width required by the sidebar and two-column binding editor caused horizontal scrolling, while unrestricted growth made the compact utility interface scale well beyond its intended layout.
+
+**Decision:** Keep the main window resizable, but constrain its native bounds to 940×600 minimum and 1200×800 maximum. Disable maximize and full-screen so operating-system controls cannot bypass the maximum. The main document owns no scrollbars; `.content` is vertical-scroll-only so long pages remain usable without horizontal drift.
+
+**Consequences:** Users can still move and resize KeeBind within a useful range, every supported size preserves the intended layout, and only content that is genuinely taller than the viewport scrolls. Any future wider editor must either wrap responsively or justify increasing the centralized bounds.
+
+## 21. Reserve one scrollbar gutter across functional tabs (2026-07-26)
+
+**Context:** Bindings, Key Listener and Settings used the same available width under normal content, but Settings can become taller when permission warnings or recovery instructions appear. On systems with non-overlay scrollbars, its newly visible vertical scrollbar reduced only that tab's usable width, making its panels look shorter.
+
+**Decision:** Give all three functional views the shared `.main-view` full-width contract and set `scrollbar-gutter: stable` on their common `.content` scroller.
+
+**Consequences:** Panel edges no longer shift when switching tabs or expanding Settings content. A narrow empty gutter remains reserved when a tab does not need vertical scrolling, trading a small amount of space for consistent alignment.
+
+## 22. Size the application shell to the viewport (2026-07-26)
+
+**Context:** The first tab-alignment fix correctly made each view 100% wide, but the parent `.app` itself was an auto-sized flex child because `#root` and `.app` shared `display: flex` while `.app` had no explicit width. Long Listener content gave the shell a full-window intrinsic width. Once the stale-record guidance disappeared, shorter Settings content let the entire shell collapse from 1200px to about 959px, so its 100%-wide panels were still visibly shorter.
+
+**Decision:** Make `#root` only establish viewport height and give `.app` explicit `width: 100%`, `height: 100%`, and `min-width: 0` before it lays out the sidebar and content pane.
+
+**Consequences:** View contents can no longer change the width of the application shell. In the reproduced packaged-app sequence, Settings remains 958px wide before, during, and after the permission guidance transition, matching Bindings and Key Listener exactly.

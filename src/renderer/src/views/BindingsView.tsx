@@ -170,7 +170,7 @@ export function BindingsView({
         })
 
   return (
-    <div>
+    <div className="main-view">
       <h1>Bindings</h1>
       <p className="subtitle">
         Global hotkeys that launch apps, open URLs, or run multi-step workflows. Pin the ones you

@@ -96,7 +96,7 @@ export function ListenerView({
   }
 
   return (
-    <div>
+    <div className="main-view">
       <h1>Key Listener</h1>
       <p className="subtitle">
         Press any key on any connected keyboard or macropad, wired or wireless, and see exactly

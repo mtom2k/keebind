@@ -9,7 +9,7 @@ Electron (43) + TypeScript + React 19, built with electron-vite (Vite 7), packag
 ```
 ┌────────────────────── main process ──────────────────────┐
 │ index.ts      lifecycle, single-instance, app.setName    │
-│ window.ts     BrowserWindow (close = hide), dock icon    │
+│ window.ts     bounded BrowserWindow (close = hide), dock │
 │ popover.ts    tray popover window + About window         │
 │ paths.ts      resources/ + icon path resolution          │
 │ tray.ts       Tray icon: click = popover, right = menu   │

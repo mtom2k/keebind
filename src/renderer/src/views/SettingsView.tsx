@@ -48,7 +48,7 @@ export function SettingsView({ platform }: { platform: Platform }) {
   const surface = platform === 'darwin' ? 'menu bar' : 'system tray'
 
   return (
-    <div>
+    <div className="main-view">
       <h1>Settings</h1>
       <p className="subtitle">Appearance, startup behavior, listener details, and permissions.</p>
 
