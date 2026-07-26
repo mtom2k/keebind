@@ -178,3 +178,11 @@ Append-only. Newest last. Each entry: context → decision → consequences.
 **Decision:** Add an optional, backward-compatible `Binding.name`; use the old description as the display-name fallback. Parent manual prompts to their invoking BrowserWindow and suppress popover blur dismissal for the dialog lifetime. For global shortcuts, temporarily show/focus the hidden main window as the owner and restore its prior visibility afterward. Before running an accepted snapshot, compare its execution-relevant revision with the current stored binding.
 
 **Consequences:** The prompt reliably appears in front, lists the hotkey, distinct name, description and full action, and cannot authorize a binding that changed while approval was pending. Old records remain valid without migration.
+
+## 27. Separate existing-binding edits from creation (2026-07-26)
+
+**Context:** Reusing the inline creation panel for Edit placed an existing binding's form after the entire binding list. On a populated Bindings tab it looked like another card had appeared at an unrelated location, and the user could continue tabbing through obscured page controls.
+
+**Decision:** Keep the new-binding editor inline, but render existing-binding edits as a centered modal over the current view. Autofocus Name, trap Tab within the modal, make Escape and the explicit Discard edits button abandon the draft, and keep Save as the only persistence path. Constrain the modal to the viewport and scroll long workflows inside it.
+
+**Consequences:** Edit now preserves context and clearly isolates unsaved changes without changing the creation workflow. Large workflow forms remain usable at the 940×600 minimum window size and cannot introduce page-level horizontal scrolling.

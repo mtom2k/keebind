@@ -44,6 +44,8 @@ export function BindingsView({
   const [query, setQuery] = useState('')
   const [pendingDelete, setPendingDelete] = useState<Binding | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const editingExisting = Boolean(editing && bindings.some((b) => b.id === editing.id))
 
   const refresh = useCallback(async () => {
     const res = await window.keebind.listBindings()
@@ -102,12 +104,52 @@ export function BindingsView({
     return () => window.removeEventListener('keydown', dismiss)
   }, [pendingDelete, deleting])
 
+  // Existing bindings edit in a true focused modal: Escape discards and Tab
+  // remains inside the editor instead of moving into the obscured page.
+  useEffect(() => {
+    if (!editingExisting) return
+    const handleModalKeys = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        if (!saving) setEditing(null)
+        return
+      }
+      if (event.key !== 'Tab') return
+
+      const modal = document.querySelector<HTMLElement>('.binding-edit-modal')
+      if (!modal) return
+      const focusable = Array.from(
+        modal.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])'
+        )
+      ).filter((element) => element.offsetParent !== null)
+      if (focusable.length === 0) return
+
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      const active = document.activeElement
+      if (event.shiftKey && (active === first || !modal.contains(active))) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && (active === last || !modal.contains(active))) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+    window.addEventListener('keydown', handleModalKeys)
+    return () => window.removeEventListener('keydown', handleModalKeys)
+  }, [editingExisting, saving])
+
   const save = async () => {
     if (!editing || !editing.accelerator) return
-    const res = await window.keebind.saveBinding(editing)
-    setBindings(res.bindings)
-    setStatuses(res.statuses)
-    setEditing(null)
+    setSaving(true)
+    try {
+      const res = await window.keebind.saveBinding(editing)
+      setBindings(res.bindings)
+      setStatuses(res.statuses)
+      setEditing(null)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const remove = async (id: string) => {
@@ -281,96 +323,120 @@ export function BindingsView({
       )}
 
       {editing && (
-        <div className="panel editor">
-          <h3 className="editor-title">
-            {bindings.some((b) => b.id === editing.id) ? 'Edit binding' : 'New binding'}
-          </h3>
+        <div
+          className={
+            editingExisting ? 'modal-backdrop binding-editor-backdrop' : 'binding-editor-inline'
+          }
+        >
+          <section
+            className={`panel editor ${editingExisting ? 'binding-edit-modal' : ''}`}
+            role={editingExisting ? 'dialog' : undefined}
+            aria-modal={editingExisting ? 'true' : undefined}
+            aria-labelledby={editingExisting ? 'edit-binding-title' : undefined}
+            aria-describedby={editingExisting ? 'edit-binding-description' : undefined}
+          >
+            <h3 className="editor-title" id={editingExisting ? 'edit-binding-title' : undefined}>
+              {editingExisting ? 'Edit binding' : 'New binding'}
+            </h3>
 
-          <div className="editor-grid">
-            <label className="field">
-              Hotkey
-              <KeyCaptureField
-                value={editing.accelerator}
-                platform={platform}
-                onChange={(accelerator) => setEditing({ ...editing, accelerator })}
-              />
-            </label>
-            <label className="field">
-              Name
-              <input
-                type="text"
-                value={editing.name ?? ''}
-                placeholder="e.g. Open my notes"
-                onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-              />
-            </label>
-            <label className="field editor-description">
-              Description
-              <input
-                type="text"
-                value={editing.description}
-                placeholder="Optional details about what this binding does"
-                onChange={(e) => setEditing({ ...editing, description: e.target.value })}
-              />
-            </label>
-          </div>
+            {editingExisting && (
+              <p className="binding-editor-intro muted" id="edit-binding-description">
+                Editing <strong>{bindingDisplayName(editing)}</strong>. Save your changes or discard
+                them to return to the binding list.
+              </p>
+            )}
 
-          {conflicts.map((c, i) => (
-            <div className={`alert ${c.severity}`} key={i}>
-              <strong>
-                {c.severity === 'warning' ? '⚠ ' : 'ℹ '}
-                {c.combo}
-              </strong>{' '}
-              {c.label}
-              {c.note ? <div className="small">{c.note}</div> : null}
+            <div className="editor-grid">
+              <label className="field">
+                Hotkey
+                <KeyCaptureField
+                  value={editing.accelerator}
+                  platform={platform}
+                  onChange={(accelerator) => setEditing({ ...editing, accelerator })}
+                />
+              </label>
+              <label className="field">
+                Name
+                <input
+                  type="text"
+                  autoFocus={editingExisting}
+                  value={editing.name ?? ''}
+                  placeholder="e.g. Open my notes"
+                  onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+                />
+              </label>
+              <label className="field editor-description">
+                Description
+                <input
+                  type="text"
+                  value={editing.description}
+                  placeholder="Optional details about what this binding does"
+                  onChange={(e) => setEditing({ ...editing, description: e.target.value })}
+                />
+              </label>
             </div>
-          ))}
 
-          <div className="field editor-action">
-            Action
-            <ActionEditor
-              value={editing.action}
-              onChange={(action) => setEditing({ ...editing, action })}
-            />
-          </div>
+            {conflicts.map((c, i) => (
+              <div className={`alert ${c.severity}`} key={i}>
+                <strong>
+                  {c.severity === 'warning' ? '⚠ ' : 'ℹ '}
+                  {c.combo}
+                </strong>{' '}
+                {c.label}
+                {c.note ? <div className="small">{c.note}</div> : null}
+              </div>
+            ))}
 
-          <div className="row editor-footer">
-            <div className="editor-options">
-              <Tooltip tip={`Show this binding in the ${surface}`}>
-                <label className="check-inline">
-                  <input
-                    type="checkbox"
-                    checked={editing.pinned ?? false}
-                    onChange={(e) => setEditing({ ...editing, pinned: e.target.checked })}
-                  />
-                  Pin to {surface}
-                </label>
+            <div className="field editor-action">
+              Action
+              <ActionEditor
+                value={editing.action}
+                onChange={(action) => setEditing({ ...editing, action })}
+              />
+            </div>
+
+            <div className="row editor-footer">
+              <div className="editor-options">
+                <Tooltip tip={`Show this binding in the ${surface}`}>
+                  <label className="check-inline">
+                    <input
+                      type="checkbox"
+                      checked={editing.pinned ?? false}
+                      onChange={(e) => setEditing({ ...editing, pinned: e.target.checked })}
+                    />
+                    Pin to {surface}
+                  </label>
+                </Tooltip>
+                <Tooltip tip="Ask for approval before this binding runs from a hotkey, KeeBind, or the menu">
+                  <label className="check-inline">
+                    <input
+                      type="checkbox"
+                      checked={editing.confirmBeforeRun ?? false}
+                      onChange={(e) =>
+                        setEditing({ ...editing, confirmBeforeRun: e.target.checked })
+                      }
+                    />
+                    Confirm before run
+                  </label>
+                </Tooltip>
+              </div>
+              <div className="spacer" />
+              <Tooltip tip="Discard changes">
+                <button className="btn" disabled={saving} onClick={() => setEditing(null)}>
+                  {editingExisting ? 'Discard edits' : 'Cancel'}
+                </button>
               </Tooltip>
-              <Tooltip tip="Ask for approval before this binding runs from a hotkey, KeeBind, or the menu">
-                <label className="check-inline">
-                  <input
-                    type="checkbox"
-                    checked={editing.confirmBeforeRun ?? false}
-                    onChange={(e) =>
-                      setEditing({ ...editing, confirmBeforeRun: e.target.checked })
-                    }
-                  />
-                  Confirm before run
-                </label>
+              <Tooltip tip="Save and activate this binding">
+                <button
+                  className="btn primary"
+                  disabled={!editing.accelerator || saving}
+                  onClick={save}
+                >
+                  {saving ? 'Saving…' : 'Save binding'}
+                </button>
               </Tooltip>
             </div>
-            <div className="spacer" />
-            <Tooltip tip="Discard changes">
-              <button className="btn" onClick={() => setEditing(null)}>
-                Cancel
-              </button>
-            </Tooltip>
-            <Tooltip tip="Save and activate this binding">
-              <button className="btn primary" disabled={!editing.accelerator} onClick={save}>
-                Save binding
-              </button>
-            </Tooltip>
-          </div>
+          </section>
         </div>
       )}
 
