@@ -34,18 +34,18 @@
     { "key": "F10", "label": "Function row default: mute", "severity": "info", "note": "See F1 note: media function unless standard function keys are enabled or Fn is held." },
     { "key": "F11", "label": "Show Desktop / volume down", "severity": "warning", "note": "macOS maps F11 to Show Desktop (and volume down on the media row). Check System Settings → Desktop & Dock / Keyboard shortcuts before binding it." },
     { "key": "F12", "label": "Function row default: volume up", "severity": "info", "note": "Historically also Dashboard. See F1 note about media functions." },
-    { "key": "F13", "label": "Free on modern macOS", "severity": "info", "note": "Unassigned by default, so it makes a good remap target. Historical caveat: on Windows-layout keyboards F13 occupies the Print Screen position and a few apps treat it as PrtScn." },
+    { "key": "F13", "label": "Free on modern macOS", "severity": "info", "note": "Unassigned by default, so it makes a good hotkey. Historical caveat: on Windows-layout keyboards F13 occupies the Print Screen position and a few apps treat it as PrtScn." },
     { "key": "F14", "label": "Usually free; brightness on some hardware", "severity": "info", "note": "Unassigned by macOS, but some external displays and older Apple keyboards use F14 for brightness down at the hardware level." },
     { "key": "F15", "label": "Usually free; brightness on some hardware", "severity": "info", "note": "Unassigned by macOS, but some external displays and older Apple keyboards use F15 for brightness up at the hardware level." },
-    { "key": "F16", "label": "Free, ideal remap target", "severity": "info", "note": "Unassigned by macOS. Ideal for macropads and custom bindings." },
-    { "key": "F17", "label": "Free, ideal remap target", "severity": "info", "note": "Unassigned by macOS. Ideal for macropads and custom bindings." },
-    { "key": "F18", "label": "Free, ideal remap target", "severity": "info", "note": "Unassigned by macOS. Ideal for macropads and custom bindings." },
-    { "key": "F19", "label": "Free, ideal remap target", "severity": "info", "note": "Unassigned by macOS. Ideal for macropads and custom bindings. F19 is the last key on Apple's full-size keyboards." },
+    { "key": "F16", "label": "Free, ideal hotkey", "severity": "info", "note": "Unassigned by macOS. Ideal for macropads and custom bindings." },
+    { "key": "F17", "label": "Free, ideal hotkey", "severity": "info", "note": "Unassigned by macOS. Ideal for macropads and custom bindings." },
+    { "key": "F18", "label": "Free, ideal hotkey", "severity": "info", "note": "Unassigned by macOS. Ideal for macropads and custom bindings." },
+    { "key": "F19", "label": "Free, ideal hotkey", "severity": "info", "note": "Unassigned by macOS. Ideal for macropads and custom bindings. F19 is the last key on Apple's full-size keyboards." },
     { "key": "F20", "label": "Free; not present on Apple keyboards", "severity": "info", "note": "macOS recognizes F20 but no Apple keyboard has it, which makes it perfect for programmable boards that can emit it." },
     { "key": "F21", "label": "May not be delivered by macOS", "severity": "warning", "note": "macOS support for F21–F24 is inconsistent; many boards' F21–F24 keypresses never reach apps. Verify with the Key Listener before relying on it." },
     { "key": "F22", "label": "May not be delivered by macOS", "severity": "warning", "note": "Same caveat as F21. Check it in the Key Listener before you rely on it." },
     { "key": "F23", "label": "May not be delivered by macOS", "severity": "warning", "note": "Same caveat as F21. Check it in the Key Listener before you rely on it." },
     { "key": "F24", "label": "May not be delivered by macOS", "severity": "warning", "note": "Same caveat as F21. Check it in the Key Listener before you rely on it." },
-    { "key": "CapsLock", "label": "Handled by the OS", "severity": "warning", "note": "Caps Lock toggling is handled by macOS and cannot be used as a hotkey. Remap it in System Settings → Keyboard → Modifier Keys, or on the board itself via VIA." }
+    { "key": "CapsLock", "label": "Handled by the OS", "severity": "warning", "note": "Caps Lock toggling is handled by macOS and cannot be used as a hotkey. Change it in System Settings → Keyboard → Modifier Keys, or with your keyboard's own configuration software." }
   ]
 }

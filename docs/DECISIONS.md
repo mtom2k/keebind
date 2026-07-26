@@ -92,3 +92,9 @@ Append-only. Newest last. Each entry: context → decision → consequences.
 **Context:** `requestInputMonitoring()` only opened a keyboard-class HID device. If none was enumerable, it gave up and KeeBind never registered in the pane.
 **Decision:** Keep the HID open as the first attempt, and fall back to creating and immediately tearing down a keyboard CGEventTap through uiohook (`pokeEventTap`). Both calls are gated on `kTCCServiceListenEvent`, so either one registers us. Also widened the device filter from usage 6 to usages 6 and 7 (keyboard and keypad).
 **Consequences:** Registration no longer depends on the hardware present. This exposed a latent bug in `listener.ts`: the event handler was captured in a closure on the first `startListener` call and never rebound, so a second caller was silently ignored. The handler now lives in a variable that each call updates.
+
+## 16. Remove VIA and all raw-HID device support (2026-07-25)
+
+**Context:** KeeBind is being narrowed to global hotkey bindings, key diagnostics, conflict warnings and tray access. Hardware discovery, definition management and firmware programming are no longer part of the solution.
+**Decision:** Remove the VIA tab and renderer, all VIA IPC and shared types, the raw-HID protocol and device/definition modules, the catalog-fetch script, browser mock support, and `node-hid`. Input Monitoring requests now use only the existing `uiohook` CGEventTap path.
+**Consequences:** KeeBind no longer identifies, opens, configures or remaps keyboards. There is no raw-HID access or definition import/catalog flow. The only native dependency is `uiohook-napi`; arbitrary software key-to-key remapping remains out of scope.

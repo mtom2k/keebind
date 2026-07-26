@@ -1,6 +1,6 @@
 # KeeBind: repo conventions
 
-Electron + TypeScript + React keybinder/remapper. macOS menu bar / Windows tray app.
+Electron + TypeScript + React keybinder and key listener. macOS menu bar / Windows tray app.
 
 ## Documentation discipline (CRITICAL)
 
@@ -19,11 +19,10 @@ Read `docs/HANDOFF.md` first when starting work here.
 - `npm run typecheck`: TS check for both main and renderer projects
 - `npm run build:mac` / `npm run build:win`: package installers
 - `npm run icons`: regenerate all icons from code (`scripts/generate-icons.mjs`)
-- `npm run via:definitions`: bundle the official VIA definition catalog (network)
 
 ## Conventions
 
 - Shared types live in `src/shared/types.ts`; the IPC surface is defined once in `src/main/ipc.ts` and mirrored in `src/preload/index.ts` (`KeeBindApi`). Keep the three in sync.
 - Every user-facing control gets a tooltip (`Tooltip` component or `title`).
 - The renderer must keep working in a plain browser via the dev mock (`src/renderer/src/devMock.ts`): it's how UI is developed and tested without hardware.
-- No native code beyond the two prebuilt deps (`uiohook-napi`, `node-hid`). OS-level key interception is deliberately out of scope for v1 (see DECISIONS.md).
+- No native code beyond the prebuilt `uiohook-napi` dependency. OS-level key interception is deliberately out of scope for v1 (see DECISIONS.md).

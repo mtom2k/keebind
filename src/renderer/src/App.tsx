@@ -6,7 +6,6 @@ import { AboutView } from './views/AboutView'
 import { BindingsView } from './views/BindingsView'
 import { ListenerView } from './views/ListenerView'
 import { SettingsView } from './views/SettingsView'
-import { ViaView } from './views/ViaView'
 
 type View = NavigateRequest['view']
 
@@ -20,11 +19,6 @@ const NAV: { id: View; label: string; tip: string }[] = [
     id: 'listener',
     label: 'Key Listener',
     tip: 'Press any key on any connected keyboard and see what KeeBind receives'
-  },
-  {
-    id: 'via',
-    label: 'VIA Devices',
-    tip: 'Remap keys directly on VIA-compatible keyboards and macropads'
   },
   {
     id: 'settings',
@@ -90,7 +84,6 @@ export function App() {
           />
         )}
         {view === 'listener' && <ListenerView platform={platform} onOpenSettings={() => go('settings')} />}
-        {view === 'via' && <ViaView />}
         {view === 'settings' && <SettingsView platform={platform} />}
         {view === 'about' && <AboutView />}
       </main>

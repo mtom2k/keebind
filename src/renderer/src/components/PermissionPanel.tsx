@@ -54,7 +54,8 @@ export function PermissionPanel({
     }
   }
 
-  const allGranted = info.accessibility === 'granted' && info.inputMonitoring === 'granted'
+  const allGranted =
+    info.accessibility === 'granted' && info.inputMonitoring !== 'denied'
   const somethingWrong = info.accessibility === 'denied' || info.inputMonitoring === 'denied'
 
   const row = (pane: Pane, label: string, state: PermissionState, tip: string) => (
@@ -73,8 +74,8 @@ export function PermissionPanel({
     <div className={`panel ${allGranted ? '' : 'alert warning'}`}>
       <strong>{allGranted ? 'macOS permissions' : '⚠ macOS permissions needed'}</strong>
       <div className="small" style={{ margin: '4px 0 12px' }}>
-        The Key Listener needs Accessibility and Input Monitoring. Hotkey bindings and VIA
-        remapping work without either.
+        The Key Listener needs Accessibility and Input Monitoring. Hotkey bindings work without
+        either.
       </div>
 
       {row(

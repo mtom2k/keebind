@@ -1,6 +1,6 @@
 # KeeBind: Project State
 
-_Last updated: 2026-07-23_
+_Last updated: 2026-07-25_
 
 ## Status: v0.2.0, feature-complete v1, macOS-verified
 
@@ -15,15 +15,14 @@ _Last updated: 2026-07-23_
 | Key Listener | ✅ Done | `uiohook-napi` global hook, opt-in start/stop. Renders whole chords as keycaps (modifiers included), copies the matching accelerator, Clear button, history table. |
 | Hotkey → action bindings | ✅ Done | Electron `globalShortcut`. Actions: launch app, open URL, open path, shell command, multi-step workflow with per-step delays. Browse buttons open Finder / File Explorer for app and path targets, in single actions and workflow steps. Per-binding enable toggle, Run button, master switch. "Not registered" badge when the OS refuses a hotkey. |
 | Conflict warnings | ✅ Done | Per-OS databases (`src/main/data/conflicts/darwin.json`, `win32.json`) incl. researched F13 to F24 guidance; also warns on duplicate in-app bindings. Checked live while editing a binding. |
-| macOS permissions | ✅ Done | Controls live in Settings only; the Key Listener shows a one-line status with a jump-to-Settings button. One button per permission, **Request permission**, since that is the only action that registers the app with macOS. Input Monitoring asks via a HID keyboard open and falls back to a CGEventTap. Stale grants left over from an earlier build are detected and clearable (see below). |
-| VIA device remapping | ✅ Done (needs hardware test) | Raw-HID protocol (`0xFF60`/`0x61`), device discovery, layer tabs, layout render from VIA definition, keycode picker + raw hex, write-then-read-back verification. Custom definition import; optional bundled catalog via `npm run via:definitions`. |
+| macOS permissions | ✅ Done | Controls live in Settings only; the Key Listener shows a one-line status with a jump-to-Settings button. One button per permission, **Request permission**, since that is the only action that registers the app with macOS. Input Monitoring is requested through the listener's CGEventTap. Stale grants left over from an earlier build are detected and clearable (see below). |
 | Tooltips everywhere | ✅ Done | Portal-rendered so nothing clips them; auto-flip and viewport clamping. `Tooltip` / `title` on all actionable controls, incl. tray menu items. |
 | Launch at login | ✅ Done | Works in packaged builds only (macOS restriction for unsigned/ad-hoc dev builds). |
 | Packaging | ✅ Verified | electron-builder: mac dmg+zip arm64 (ad-hoc signed) and win NSIS x64 both build from this Mac (`npmRebuild: false` + bundled N-API prebuilds make the cross-build work). |
 
 ## Verified
 
-- macOS (this machine): all six views against the browser dev mock in light and dark, typecheck and production bundle clean.
+- macOS (this machine): all current views against the browser dev mock in light and dark, typecheck and production bundle clean.
 - Binding editor: clicking Capture changes the label to "Press a key" with **zero** layout movement (panel height, field positions and widths all identical before and after). This was the reported bug.
 - Workflow steps: a two-step workflow with Browse buttons fits the pane with no horizontal overflow (`scrollWidth === clientWidth`), and the Save button stays on screen. The step row wraps rather than pushing the pane wider.
 - Tray popover at 320px: pinned bindings listed, hovering a row reveals the Run and Manage buttons, empty state renders when nothing is pinned.
@@ -56,13 +55,11 @@ KeeBind now records the cdhash it was granted under, reports `staleGrant` when t
 - **The tray popover has only been seen in a browser window.** Its rendering and hover behaviour are verified, but the parts that need a real `Tray` (positioning under the menu-bar icon, hide-on-blur, left-click vs right-click) have not run in Electron yet.
 - **Browse dialogs** are wired and typechecked, but `dialog.showOpenDialog` cannot run in the browser harness, so the mock returns a canned path.
 - **Windows runtime**: tray behavior, taskbar icon, conflict DB accuracy, `start`-based app launching, NSIS install. Needs a Windows machine.
-- **VIA against real hardware**: protocol implemented per QMK `via.h` (protocol commands 0x01/0x04/0x05/0x11/0x12); mock-verified only. Test with any VIA board.
-- **The permission fixes have not been exercised against a real TCC prompt.** The diagnosis is confirmed from the signature, and the code paths are typechecked, but `tccutil reset`, the HID-open probe and the event-tap fallback have only run against the dev mock. Testing them means installing the DMG and granting for real.
+- **The permission fixes have not been exercised against a real TCC prompt.** The diagnosis is confirmed from the signature, and the code paths are typechecked, but `tccutil reset` and the event-tap request have only run against the dev mock. Testing them means installing the DMG and granting for real.
 - **`tccutil reset` was not run on this machine.** The syntax is confirmed (`tccutil reset SERVICE [BUNDLE_ID]`) but running it would have cleared the user's own records, so it was left alone.
 
 ## Planned / deferred (phase 2)
 
-- **OS-level key-to-key interception for non-VIA boards** (e.g. CapsLock→Esc system-wide). Deliberately deferred, see DECISIONS.md #3. Would need a native N-API module: `WH_KEYBOARD_LL` + `SendInput` (Windows), `CGEventTap` + repost (macOS).
+- **OS-level key-to-key interception** (e.g. CapsLock→Esc system-wide). Deliberately deferred, see DECISIONS.md #3. Would need a native N-API module: `WH_KEYBOARD_LL` + `SendInput` (Windows), `CGEventTap` + repost (macOS).
 - **Developer ID signing + notarization.** The current ad-hoc signature is content-based, so macOS permission grants reset on every update (DECISIONS.md #8). A real certificate fixes that and removes the Gatekeeper warning.
-- KLE rotation support in the VIA layout renderer (ergo boards currently render at their x/y anchor without rotation).
 - Auto-update (electron-updater) once there's a release channel.

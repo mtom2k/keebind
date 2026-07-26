@@ -114,8 +114,8 @@ export function BindingsView({ platform, focusBindingId, onFocusHandled }: Props
       {bindings.length === 0 && !editing && (
         <div className="panel muted">
           No bindings yet. Keys like <kbd>F13</kbd> to <kbd>F19</kbd> are a good place to start,
-          since nothing in the OS uses them. Set one on your board in the VIA tab, then bind it
-          here.
+          since they are rarely used by the OS. Configure a spare key on your keyboard or macropad,
+          then bind it here.
         </div>
       )}
 

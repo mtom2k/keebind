@@ -1,13 +1,12 @@
 # KeeBind
 
-A minimal, cross-platform (macOS + Windows) keybinder and remapper for keyboards and macropads.
+A minimal, cross-platform (macOS + Windows) keybinder and key listener for keyboards and macropads.
 
-KeeBind lives in the macOS menu bar / Windows notification area and does four things:
+KeeBind lives in the macOS menu bar / Windows notification area and does three things:
 
 1. **Key Listener**: press any key on any connected keyboard or macropad (wired, wireless, or Bluetooth) and see exactly what the OS receives.
 2. **Bindings**: bind any hotkey (including the OS-free F13 to F24 range) to an action: launch an app, open a URL, open a file/folder, run a shell command, or run a **workflow** of several steps in order with optional delays.
 3. **Conflict warnings**: when you pick a hotkey, KeeBind checks it against a per-OS database of system shortcuts (Spotlight, Mission Control, Win+L, PrtScn, F13 to F24 quirks, and so on) and warns you before you shadow something.
-4. **VIA remapping**: for VIA-compatible keyboards and macropads, remap keys *in the keyboard's own memory* over raw HID. Changes persist across computers and need no OS hooks.
 
 ## Install / Run
 
@@ -22,14 +21,6 @@ Packaged builds:
 npm run build:mac    # dmg + zip (ad-hoc signed, not notarized)
 npm run build:win    # NSIS installer (cross-buildable from macOS)
 ```
-
-Optional: bundle the official VIA keyboard definition catalog (needs network):
-
-```bash
-npm run via:definitions
-```
-
-Without it, VIA boards can still be configured by importing their definition JSON in the app.
 
 ## macOS notes
 

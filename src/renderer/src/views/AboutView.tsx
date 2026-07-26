@@ -43,11 +43,10 @@ export function AboutView({ standalone = false }: { standalone?: boolean }) {
       </div>
 
       <p className="about-blurb">
-        A keybinder and remapper for keyboards and macropads. KeeBind lives in your{' '}
+        A keybinder and key listener for keyboards and macropads. KeeBind lives in your{' '}
         {info?.platform === 'win32' ? 'system tray' : 'menu bar'} and does four things: it shows you
         exactly what keys your hardware sends, binds hotkeys to actions like launching an app or
-        running a workflow, warns you when a hotkey clashes with something the OS already owns, and
-        remaps VIA keyboards in their own memory so the change travels with the board.
+        running a workflow, and warns you when a hotkey clashes with something the OS already owns.
       </p>
 
       <dl className="about-facts">

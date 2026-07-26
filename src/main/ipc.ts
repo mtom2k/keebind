@@ -24,9 +24,6 @@ import { hidePopover, refreshPopover, resizePopover, showAboutWindow } from './p
 import { store } from './store'
 import { updateTrayMenu } from './tray'
 import { applyDockVisibility, getMainWindow, setQuitting, showMainWindow } from './window'
-import { countBundledDefinitions, importDefinition } from './via/definitions'
-import { listViaDevices, openViaDevice, setViaKeycode } from './via/hid'
-import { KEYCODE_CATEGORIES } from './via/keycodes'
 
 function broadcast(channel: string, payload: unknown): void {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -163,15 +160,4 @@ export function registerIpc(): void {
     setQuitting(true)
     app.quit()
   })
-
-  ipcMain.handle('via:list', () => listViaDevices())
-  ipcMain.handle('via:open', (_e, path: string) => openViaDevice(path))
-  ipcMain.handle(
-    'via:setKeycode',
-    (_e, args: { path: string; layer: number; row: number; col: number; keycode: number }) =>
-      setViaKeycode(args)
-  )
-  ipcMain.handle('via:importDefinition', (_e, jsonText: string) => importDefinition(jsonText))
-  ipcMain.handle('via:keycodes', () => KEYCODE_CATEGORIES)
-  ipcMain.handle('via:bundledCount', () => countBundledDefinitions())
 }

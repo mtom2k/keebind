@@ -1,8 +1,8 @@
 // In-browser development mock. When the renderer runs outside Electron
 // (plain `vite` browser tab, where the preload bridge is absent) this
 // installs an in-memory `window.keebind` so the UI can be developed and
-// exercised, including a fake 3×3 VIA macropad. Never active inside the
-// real app: there the preload bridge exists before this module runs.
+// exercised without Electron. Never active inside the real app: there the
+// preload bridge exists before this module runs.
 import type {
   Binding,
   KeyEventPayload,
@@ -78,20 +78,6 @@ export function installDevMock(): void {
   const listeners = new Set<(p: KeyEventPayload) => void>()
   const navHandlers = new Set<(r: NavigateRequest) => void>()
   let listening = false
-
-  // fake 3×3 macropad: keycodes for Num 1..9
-  const keymap = [
-    [
-      [0x59, 0x5a, 0x5b],
-      [0x5c, 0x5d, 0x5e],
-      [0x5f, 0x60, 0x61]
-    ],
-    [
-      [0x3a, 0x3b, 0x3c],
-      [0x01, 0x01, 0x01],
-      [0x01, 0x01, 0x01]
-    ]
-  ]
 
   // Both edges are forwarded: the Key Listener builds chords from held keys and
   // needs keyup to know when a combo ended.
@@ -200,52 +186,6 @@ export function installDevMock(): void {
       navHandlers.add(cb)
       return () => navHandlers.delete(cb)
     },
-    onPopoverRefresh: () => () => {},
-    viaList: async () => [
-      {
-        path: 'mock-device',
-        name: 'Mock Macropad 3×3',
-        manufacturer: 'KeeBind Dev',
-        vendorId: 0xfeed,
-        productId: 0x0001,
-        hasDefinition: true
-      }
-    ],
-    viaOpen: async (path) => ({
-      path,
-      name: 'Mock Macropad 3×3',
-      manufacturer: 'KeeBind Dev',
-      vendorId: 0xfeed,
-      productId: 0x0001,
-      hasDefinition: true,
-      protocolVersion: 12,
-      layerCount: keymap.length,
-      matrix: { rows: 3, cols: 3 },
-      keys: Array.from({ length: 9 }, (_, i) => ({
-        row: Math.floor(i / 3),
-        col: i % 3,
-        x: i % 3,
-        y: Math.floor(i / 3),
-        w: 1,
-        h: 1
-      })),
-      keymap: keymap.map((l) => l.map((r) => [...r]))
-    }),
-    viaSetKeycode: async ({ layer, row, col, keycode }) => {
-      keymap[layer][row][col] = keycode
-      return { verified: keycode }
-    },
-    viaImportDefinition: async () => ({ name: 'Mock import' }),
-    viaKeycodes: async () => [
-      {
-        name: 'Numpad',
-        keycodes: Array.from({ length: 9 }, (_, i) => ({ code: 0x59 + i, label: `Num ${i + 1}` }))
-      },
-      {
-        name: 'Function',
-        keycodes: Array.from({ length: 12 }, (_, i) => ({ code: 0x3a + i, label: `F${i + 1}` }))
-      }
-    ],
-    viaBundledCount: async () => 0
+    onPopoverRefresh: () => () => {}
   }
 }

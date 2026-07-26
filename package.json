@@ -2,7 +2,7 @@
   "name": "keebind",
   "productName": "KeeBind",
   "version": "0.2.0",
-  "description": "Cross-platform keybinder and remapper for keyboards and macropads",
+  "description": "Cross-platform keybinder and key listener for keyboards and macropads",
   "main": "./out/main/index.js",
   "private": true,
   "author": "Muhannad",
@@ -11,7 +11,6 @@
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "icons": "node scripts/generate-icons.mjs",
-    "via:definitions": "node scripts/fetch-via-definitions.mjs",
     "build:mac": "electron-vite build && electron-builder --mac",
     "build:win": "electron-vite build && electron-builder --win"
   },
@@ -27,7 +26,6 @@
     "vite": "^7.3.6"
   },
   "dependencies": {
-    "node-hid": "^3.4.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "uiohook-napi": "^1.5.5"

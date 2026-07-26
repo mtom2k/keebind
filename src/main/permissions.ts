@@ -1,6 +1,5 @@
 import { app, shell, systemPreferences } from 'electron'
 import { spawnSync } from 'node:child_process'
-import { HIDAsync, devicesAsync } from 'node-hid'
 import type { PermissionsInfo, PermissionState, Platform } from '../shared/types'
 import { pokeEventTap } from './listener'
 import { store } from './store'
@@ -29,18 +28,12 @@ import { store } from './store'
  *
  * 3. **An app only appears under Input Monitoring once it asks for it.** The
  *    pane lists clients that have requested `kTCCServiceListenEvent`, and
- *    Electron exposes no API for it. Two calls are gated behind it: opening a
- *    keyboard-class HID device, and creating a keyboard CGEventTap. We try
- *    both, because a Mac with no enumerable HID keyboard would otherwise never
- *    register at all.
+ *    Electron exposes no API for it. Creating the keyboard CGEventTap used by
+ *    the listener triggers that request, so the UI invokes it explicitly.
  */
 
-/** Generic Desktop page; keyboard and keypad usages are the ones TCC gates. */
-const USAGE_PAGE_GENERIC_DESKTOP = 0x01
-const KEYBOARD_USAGES = new Set([0x06, 0x07])
-
-// Probing prompts the user the first time, so `permissionsInfo()` reports the
-// last known answer instead of re-probing on every poll.
+// Electron does not expose an Input Monitoring status query. Keep the state
+// unknown after requesting it rather than claiming the event tap was granted.
 let inputMonitoring: PermissionState = 'unknown'
 let cachedIdentity: string | null | undefined
 
@@ -132,53 +125,17 @@ export function requestAccessibility(): PermissionsInfo {
   return info
 }
 
-/** Opens a keyboard HID device, which is one of the calls TCC gates. */
-async function probeKeyboardHid(): Promise<PermissionState> {
-  let keyboards: { path?: string }[]
-  try {
-    keyboards = (await devicesAsync()).filter(
-      (d) =>
-        d.usagePage === USAGE_PAGE_GENERIC_DESKTOP &&
-        typeof d.usage === 'number' &&
-        KEYBOARD_USAGES.has(d.usage) &&
-        Boolean(d.path)
-    )
-  } catch {
-    return 'unknown'
-  }
-  if (keyboards.length === 0) return 'unknown'
-
-  // Any one success means access is granted. A single device can refuse for
-  // unrelated reasons (already open exclusively), so try them all.
-  for (const kb of keyboards) {
-    try {
-      const handle = await HIDAsync.open(kb.path!, { nonExclusive: true })
-      await handle.close()
-      return 'granted'
-    } catch {
-      // next device
-    }
-  }
-  return 'denied'
-}
-
 /**
- * Registers KeeBind under Input Monitoring. Tries the HID open first, then
- * falls back to creating a keyboard event tap, which is the other thing macOS
- * gates behind this permission and the one the Key Listener itself uses. The
- * fallback matters on Macs where no HID keyboard is enumerable: without it the
- * app would never appear in the pane at all.
+ * Registers KeeBind under Input Monitoring by briefly creating the keyboard
+ * event tap used by the Key Listener. macOS does not expose a passive status
+ * query, so the reported state remains unknown until the user verifies that
+ * events arrive in the listener.
  */
 export async function requestInputMonitoring(): Promise<PermissionsInfo> {
   if (process.platform !== 'darwin') return permissionsInfo()
 
-  const viaHid = await probeKeyboardHid()
-  if (viaHid === 'granted') {
-    inputMonitoring = 'granted'
-  } else {
-    pokeEventTap()
-    inputMonitoring = viaHid
-  }
+  pokeEventTap()
+  inputMonitoring = 'unknown'
   const info = permissionsInfo()
   rememberGrant(info)
   return info

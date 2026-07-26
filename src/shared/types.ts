@@ -86,7 +86,7 @@ export interface PermissionsInfo {
   /** False under `npm run dev`, where macOS grants to Electron, not KeeBind */
   packaged: boolean
   accessibility: PermissionState
-  /** 'unknown' until requestInputMonitoring() has probed at least once */
+  /** macOS exposes no passive query, so this can remain unknown after a request */
   inputMonitoring: PermissionState
   /** The name macOS lists in the privacy panes for this process */
   tccIdentity: string
@@ -105,33 +105,6 @@ export interface PermissionsInfo {
   canReset: boolean
 }
 
-export interface ViaDeviceSummary {
-  path: string
-  name: string
-  manufacturer: string
-  vendorId: number
-  productId: number
-  hasDefinition: boolean
-}
-
-export interface ViaKeyLayout {
-  row: number
-  col: number
-  x: number
-  y: number
-  w: number
-  h: number
-}
-
-export interface ViaDeviceDetail extends ViaDeviceSummary {
-  protocolVersion: number
-  layerCount: number
-  matrix: { rows: number; cols: number }
-  keys: ViaKeyLayout[]
-  /** keymap[layer][row][col] = QMK keycode */
-  keymap: number[][][]
-}
-
 export interface AppInfo {
   version: string
   platform: Platform
@@ -145,7 +118,7 @@ export interface AppInfo {
 
 /** Which view the main window should show, pushed from the main process. */
 export interface NavigateRequest {
-  view: 'bindings' | 'listener' | 'via' | 'settings' | 'about'
+  view: 'bindings' | 'listener' | 'settings' | 'about'
   /** Open this binding for editing once the Bindings view is showing */
   bindingId?: string
 }

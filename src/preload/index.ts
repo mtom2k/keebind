@@ -9,9 +9,7 @@ import type {
   NavigateRequest,
   PermissionsInfo,
   PickKind,
-  Settings,
-  ViaDeviceDetail,
-  ViaDeviceSummary
+  Settings
 } from '../shared/types'
 
 export interface KeeBindApi {
@@ -46,18 +44,6 @@ export interface KeeBindApi {
   onNavigate(cb: (request: NavigateRequest) => void): () => void
   /** Fires when the popover is shown or its binding list changes */
   onPopoverRefresh(cb: () => void): () => void
-  viaList(): Promise<ViaDeviceSummary[]>
-  viaOpen(path: string): Promise<ViaDeviceDetail>
-  viaSetKeycode(args: {
-    path: string
-    layer: number
-    row: number
-    col: number
-    keycode: number
-  }): Promise<{ verified: number }>
-  viaImportDefinition(jsonText: string): Promise<{ name: string }>
-  viaKeycodes(): Promise<{ name: string; keycodes: { code: number; label: string }[] }[]>
-  viaBundledCount(): Promise<number>
 }
 
 const api: KeeBindApi = {
@@ -98,13 +84,7 @@ const api: KeeBindApi = {
     const handler = () => cb()
     ipcRenderer.on('popover:refresh', handler)
     return () => ipcRenderer.removeListener('popover:refresh', handler)
-  },
-  viaList: () => ipcRenderer.invoke('via:list'),
-  viaOpen: (path) => ipcRenderer.invoke('via:open', path),
-  viaSetKeycode: (args) => ipcRenderer.invoke('via:setKeycode', args),
-  viaImportDefinition: (jsonText) => ipcRenderer.invoke('via:importDefinition', jsonText),
-  viaKeycodes: () => ipcRenderer.invoke('via:keycodes'),
-  viaBundledCount: () => ipcRenderer.invoke('via:bundledCount')
+  }
 }
 
 contextBridge.exposeInMainWorld('keebind', api)
