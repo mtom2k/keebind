@@ -37,6 +37,8 @@ export function App() {
   const [platform, setPlatform] = useState<Platform>('darwin')
   /** Set when the tray popover asks us to open a specific binding. */
   const [focusBindingId, setFocusBindingId] = useState<string | null>(null)
+  /** Set when the Key Listener starts a new binding from a captured key. */
+  const [draftAccelerator, setDraftAccelerator] = useState<string | null>(null)
 
   useEffect(() => {
     window.keebind.appInfo().then((info) => setPlatform(info.platform))
@@ -48,6 +50,7 @@ export function App() {
       window.keebind.onNavigate((request) => {
         setView(request.view)
         setFocusBindingId(request.bindingId ?? null)
+        setDraftAccelerator(null)
       }),
     []
   )
@@ -55,6 +58,7 @@ export function App() {
   const go = (next: View) => {
     setView(next)
     setFocusBindingId(null)
+    setDraftAccelerator(null)
   }
 
   return (
@@ -80,10 +84,22 @@ export function App() {
           <BindingsView
             platform={platform}
             focusBindingId={focusBindingId}
+            draftAccelerator={draftAccelerator}
             onFocusHandled={() => setFocusBindingId(null)}
+            onDraftHandled={() => setDraftAccelerator(null)}
           />
         )}
-        {view === 'listener' && <ListenerView platform={platform} onOpenSettings={() => go('settings')} />}
+        {view === 'listener' && (
+          <ListenerView
+            platform={platform}
+            onOpenSettings={() => go('settings')}
+            onCreateBinding={(accelerator) => {
+              setFocusBindingId(null)
+              setDraftAccelerator(accelerator)
+              setView('bindings')
+            }}
+          />
+        )}
         {view === 'settings' && <SettingsView platform={platform} />}
         {view === 'about' && <AboutView />}
       </main>

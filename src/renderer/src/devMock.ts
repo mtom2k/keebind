@@ -34,11 +34,12 @@ function mockKeyName(code: string, key: string): string {
 }
 
 export function installDevMock(): void {
-  const settings: Settings = {
+  let settings: Settings = {
     theme: 'system',
     launchAtLogin: false,
     bindingsEnabled: true,
-    showDockIcon: true
+    showDockIcon: true,
+    showTechnicalDetails: false
   }
   let permissions: PermissionsInfo = {
     platform: 'darwin',
@@ -113,7 +114,7 @@ export function installDevMock(): void {
       os: 'macOS 25.2.0 (arm64)'
     }),
     getSettings: async () => settings,
-    setSettings: async (patch) => Object.assign(settings, patch),
+    setSettings: async (patch) => (settings = { ...settings, ...patch }),
     listBindings: async () => ({ bindings, statuses: statuses() }),
     saveBinding: async (binding) => {
       const i = bindings.findIndex((b) => b.id === binding.id)

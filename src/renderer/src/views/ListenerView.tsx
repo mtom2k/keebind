@@ -23,19 +23,25 @@ function ChordKeys({ chord, large = false }: { chord: Chord; large?: boolean }) 
 
 export function ListenerView({
   platform,
-  onOpenSettings
+  onOpenSettings,
+  onCreateBinding
 }: {
   platform: Platform
   onOpenSettings: () => void
+  onCreateBinding: (accelerator: string) => void
 }) {
   const [status, setStatus] = useState<ListenerStatus | null>(null)
   const [permissions, setPermissions] = useState<PermissionsInfo | null>(null)
   const [chords, setChords] = useState(EMPTY_CHORD_STATE)
   const [copied, setCopied] = useState(false)
+  const [showTechnicalDetails, setShowTechnicalDetails] = useState(false)
 
   useEffect(() => {
     window.keebind.listenerStatus().then(setStatus)
     window.keebind.permissionsInfo().then(setPermissions)
+    window.keebind
+      .getSettings()
+      .then((settings) => setShowTechnicalDetails(settings.showTechnicalDetails))
   }, [])
 
   // Re-subscribes if `platform` resolves after the first render, since the labels
@@ -134,18 +140,34 @@ export function ListenerView({
         {shown ? (
           <>
             <ChordKeys chord={shown} large />
-            <span className="muted small">
-              {shown.keys
-                .filter((k) => !k.modifier)
-                .map((k) => `code ${k.keycode}`)
-                .join(', ')}
-            </span>
+            {showTechnicalDetails && (
+              <span className="muted small">
+                {shown.keys
+                  .filter((k) => !k.modifier)
+                  .map((k) => `code ${k.keycode}`)
+                  .join(', ')}
+              </span>
+            )}
             {accelerator && (
-              <Tooltip tip={`Copy "${accelerator}" so you can paste it into a binding's hotkey field`}>
-                <button className="btn small-btn" onClick={copy}>
-                  {copied ? '✓ Copied' : 'Copy accelerator'}
-                </button>
-              </Tooltip>
+              <>
+                {showTechnicalDetails && (
+                  <Tooltip
+                    tip={`Copy "${accelerator}" so you can paste it into a binding's hotkey field`}
+                  >
+                    <button className="btn small-btn" onClick={copy}>
+                      {copied ? '✓ Copied' : 'Copy accelerator'}
+                    </button>
+                  </Tooltip>
+                )}
+                <Tooltip tip={`Create a new binding using "${accelerator}"`}>
+                  <button
+                    className="btn primary small-btn"
+                    onClick={() => onCreateBinding(accelerator)}
+                  >
+                    + Create binding
+                  </button>
+                </Tooltip>
+              </>
             )}
           </>
         ) : (
@@ -160,8 +182,8 @@ export function ListenerView({
           <thead>
             <tr>
               <th>Combination</th>
-              <th>Accelerator</th>
-              <th>Keycodes</th>
+              {showTechnicalDetails && <th>Accelerator</th>}
+              {showTechnicalDetails && <th>Keycodes</th>}
               <th>Time</th>
             </tr>
           </thead>
@@ -171,13 +193,19 @@ export function ListenerView({
                 <td>
                   <ChordKeys chord={chord} />
                 </td>
-                <td className="muted mono">{chordToAccelerator(chord, platform) ?? 'n/a'}</td>
-                <td className="muted">
-                  {chord.keys
-                    .filter((k) => !k.modifier)
-                    .map((k) => k.keycode)
-                    .join(', ') || 'n/a'}
-                </td>
+                {showTechnicalDetails && (
+                  <td className="muted mono">
+                    {chordToAccelerator(chord, platform) ?? 'n/a'}
+                  </td>
+                )}
+                {showTechnicalDetails && (
+                  <td className="muted">
+                    {chord.keys
+                      .filter((k) => !k.modifier)
+                      .map((k) => k.keycode)
+                      .join(', ') || 'n/a'}
+                  </td>
+                )}
                 <td className="muted">{new Date(chord.ts).toLocaleTimeString()}</td>
               </tr>
             ))}

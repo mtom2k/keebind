@@ -25,7 +25,7 @@ export function SettingsView({ platform }: { platform: Platform }) {
   return (
     <div>
       <h1>Settings</h1>
-      <p className="subtitle">Appearance, startup behavior, and permissions.</p>
+      <p className="subtitle">Appearance, startup behavior, listener details, and permissions.</p>
 
       <div className="panel">
         <div className="row">
@@ -106,6 +106,28 @@ export function SettingsView({ platform }: { platform: Platform }) {
                 type="checkbox"
                 checked={settings.bindingsEnabled}
                 onChange={(e) => patch({ bindingsEnabled: e.target.checked })}
+              />
+              <span className="track" />
+            </span>
+          </Tooltip>
+        </div>
+      </div>
+
+      <div className="panel">
+        <div className="row">
+          <div style={{ flex: 1 }}>
+            <strong>Show technical key details</strong>
+            <div className="muted small">
+              Show accelerator strings and numeric keycodes in the Key Listener. Useful for
+              diagnostics, but hidden by default.
+            </div>
+          </div>
+          <Tooltip tip="Show technical accelerator and keycode details in the Key Listener">
+            <span className="switch">
+              <input
+                type="checkbox"
+                checked={settings.showTechnicalDetails}
+                onChange={(e) => patch({ showTechnicalDetails: e.target.checked })}
               />
               <span className="track" />
             </span>

@@ -4,10 +4,10 @@ import { ActionEditor, summarizeAction } from '../components/ActionEditor'
 import { KeyCaptureField } from '../components/KeyCaptureField'
 import { Tooltip } from '../components/Tooltip'
 
-function emptyBinding(): Binding {
+function emptyBinding(accelerator = ''): Binding {
   return {
     id: crypto.randomUUID(),
-    accelerator: '',
+    accelerator,
     description: '',
     enabled: true,
     pinned: false,
@@ -37,10 +37,19 @@ interface Props {
   platform: Platform
   /** Set when the tray popover asked to open one binding for editing. */
   focusBindingId?: string | null
+  /** Set when the Key Listener captured a hotkey for a new binding. */
+  draftAccelerator?: string | null
   onFocusHandled?: () => void
+  onDraftHandled?: () => void
 }
 
-export function BindingsView({ platform, focusBindingId, onFocusHandled }: Props) {
+export function BindingsView({
+  platform,
+  focusBindingId,
+  draftAccelerator,
+  onFocusHandled,
+  onDraftHandled
+}: Props) {
   const [bindings, setBindings] = useState<Binding[]>([])
   const [statuses, setStatuses] = useState<BindingStatus[]>([])
   const [editing, setEditing] = useState<Binding | null>(null)
@@ -75,6 +84,14 @@ export function BindingsView({ platform, focusBindingId, onFocusHandled }: Props
       cancelled = true
     }
   }, [focusBindingId, refresh, onFocusHandled])
+
+  // Arriving from the Key Listener: create a fresh binding with the captured
+  // accelerator already filled in so the user only has to choose its action.
+  useEffect(() => {
+    if (!draftAccelerator) return
+    setEditing(emptyBinding(draftAccelerator))
+    onDraftHandled?.()
+  }, [draftAccelerator, onDraftHandled])
 
   useEffect(() => {
     if (!editing || !editing.accelerator) {

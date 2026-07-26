@@ -18,7 +18,8 @@ const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
   launchAtLogin: false,
   bindingsEnabled: true,
-  showDockIcon: true
+  showDockIcon: true,
+  showTechnicalDetails: false
 }
 
 // Deliberately tiny hand-rolled JSON store instead of electron-store:

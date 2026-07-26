@@ -46,7 +46,7 @@ Defined in `src/main/ipc.ts`, typed in `src/preload/index.ts` (`KeeBindApi`), ex
 | Channel | Direction | Purpose |
 |---|---|---|
 | `app:info` | invoke | version + platform |
-| `settings:get` / `settings:set` | invoke | `Settings` (theme, launchAtLogin, bindingsEnabled, showDockIcon); set applies side effects (nativeTheme, login item, dock visibility, tray menu, re-register) |
+| `settings:get` / `settings:set` | invoke | `Settings` (theme, launchAtLogin, bindingsEnabled, showDockIcon, showTechnicalDetails); set applies side effects (nativeTheme, login item, dock visibility, tray menu, re-register) |
 | `bindings:list` / `bindings:save` / `bindings:delete` | invoke | CRUD; every mutation re-registers all shortcuts and returns fresh `BindingStatus[]` |
 | `bindings:run` | invoke | runs a binding's action now, without its hotkey (popover Run, editor Run) |
 | `bindings:checkConflicts` | invoke | `ConflictHit[]` for an accelerator (OS DB + in-app duplicates) |

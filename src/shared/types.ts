@@ -70,6 +70,8 @@ export interface Settings {
   bindingsEnabled: boolean
   /** macOS Dock / Windows taskbar presence. Off = tray-only. */
   showDockIcon: boolean
+  /** Show accelerator strings and numeric keycodes in the Key Listener. */
+  showTechnicalDetails: boolean
 }
 
 export interface ListenerStatus {
