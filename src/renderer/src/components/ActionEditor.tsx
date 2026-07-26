@@ -32,15 +32,6 @@ function stepMeta(type: StepType) {
   return STEP_TYPES.find((t) => t.value === type)!
 }
 
-export function summarizeAction(action: ActionSpec): string {
-  if (action.type === 'workflow') {
-    const steps = action.steps ?? []
-    const names = steps.map((s) => stepMeta(s.type).label.toLowerCase()).join(', then ')
-    return `Workflow, ${steps.length} step${steps.length === 1 ? '' : 's'}: ${names}`
-  }
-  return `${stepMeta(action.type).label}: ${action.target ?? ''}`
-}
-
 /**
  * Browse buttons for the targets that are paths. Windows file dialogs can't
  * offer files and folders at once, so "Open file/folder" gets two buttons

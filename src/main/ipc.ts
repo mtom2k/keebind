@@ -8,9 +8,9 @@ import type {
   Platform,
   Settings
 } from '../shared/types'
-import { notifyActionError, runAction } from './bindings/actions'
 import { checkConflicts } from './bindings/conflicts'
 import { bindingStatuses, refreshBindings } from './bindings/engine'
+import { executeBinding } from './bindings/execution'
 import { listenerStatus, startListener, stopListener } from './listener'
 import {
   openPermissionSettings,
@@ -91,17 +91,13 @@ export function registerIpc(): void {
     return { bindings, statuses }
   })
 
-  // Runs a binding's action without pressing its hotkey. Used by the Run
-  // button in the popover and by "Test" in the editor.
-  ipcMain.handle('bindings:run', async (_e, id: string) => {
+  // Manual and global runs share executeBinding, so confirmation and duplicate
+  // suppression apply consistently to every entry point.
+  ipcMain.handle('bindings:run', async (event, id: string) => {
     const binding = store.bindings.find((b) => b.id === id)
     if (!binding) throw new Error('That binding no longer exists.')
-    try {
-      await runAction(binding.action)
-    } catch (err) {
-      notifyActionError(binding.description || binding.accelerator, err)
-      throw err
-    }
+    const source = BrowserWindow.fromWebContents(event.sender)
+    return executeBinding(binding, source ?? undefined)
   })
 
   ipcMain.handle('bindings:checkConflicts', (_e, args: { accelerator: string; excludeId?: string }) =>

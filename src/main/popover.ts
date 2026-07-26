@@ -18,6 +18,10 @@ const MAX_HEIGHT = 520
 const MARGIN = 6
 
 let popover: BrowserWindow | null = null
+let activeTray: Tray | null = null
+/** A native confirmation owned by the popover must survive the window blur
+ * caused by the dialog itself. */
+let dialogActive = false
 
 function loadRoute(win: BrowserWindow, hash: string): void {
   if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
@@ -54,9 +58,12 @@ function create(): BrowserWindow {
   loadRoute(popover, 'popover')
 
   // Clicking anywhere else dismisses it, the way a menu does.
-  popover.on('blur', () => hidePopover())
+  popover.on('blur', () => {
+    if (!dialogActive) hidePopover()
+  })
   popover.on('closed', () => {
     popover = null
+    dialogActive = false
   })
 
   return popover
@@ -85,6 +92,7 @@ function position(win: BrowserWindow, tray: Tray): void {
 }
 
 export function showPopover(tray: Tray): void {
+  activeTray = tray
   const win = create()
   win.webContents.send('popover:refresh')
   position(win, tray)
@@ -94,6 +102,15 @@ export function showPopover(tray: Tray): void {
 
 export function hidePopover(): void {
   if (popover && !popover.isDestroyed() && popover.isVisible()) popover.hide()
+}
+
+export function isPopoverWindow(candidate?: BrowserWindow | null): boolean {
+  return Boolean(candidate && popover && !popover.isDestroyed() && candidate === popover)
+}
+
+/** Keeps the popover visible while its child native confirmation has focus. */
+export function setPopoverDialogActive(active: boolean): void {
+  dialogActive = active
 }
 
 export function togglePopover(tray: Tray): void {
@@ -108,6 +125,9 @@ export function resizePopover(height: number): void {
   const [x, y] = popover.getPosition()
   const wasVisible = popover.isVisible()
   popover.setBounds({ x, y, width: WIDTH, height: clamped })
+  // Filtering can grow or shrink the window. Re-anchor after every resize so
+  // a bottom Windows taskbar grows upward instead of covering the taskbar.
+  if (activeTray) position(popover, activeTray)
   if (wasVisible) popover.show()
 }
 
@@ -119,6 +139,8 @@ export function refreshPopover(): void {
 export function destroyPopover(): void {
   if (popover && !popover.isDestroyed()) popover.destroy()
   popover = null
+  activeTray = null
+  dialogActive = false
 }
 
 /* ------------------------------------------------------------ About window */

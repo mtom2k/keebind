@@ -20,6 +20,7 @@ Electron (43) + TypeScript + React 19, built with electron-vite (Vite 7), packag
 │ listener.ts   uiohook wrapper + keycode→name mapping     │
 │ bindings/                                                │
 │   engine.ts    globalShortcut register/refresh           │
+│   execution.ts confirmation + sole binding run boundary  │
 │   actions.ts   action runners (spawn/openExternal/…)     │
 │   conflicts.ts accelerator normalizer + DB lookup        │
 │ data/conflicts/{darwin,win32}.json  conflict databases   │
@@ -32,6 +33,7 @@ Electron (43) + TypeScript + React 19, built with electron-vite (Vite 7), packag
 │ main.tsx   routes on location.hash: main | popover|about │
 │ App.tsx    sidebar nav → 4 views                         │
 │ chord.ts   key event stream → chords + accelerators      │
+│ binding-search.ts shared binding/pinned query matcher     │
 │ views/     BindingsView, ListenerView, SettingsView,      │
 │            AboutView, PopoverView                         │
 │ components/ Tooltip, Logo, Icon, PermissionPanel,        │
@@ -49,7 +51,7 @@ Defined in `src/main/ipc.ts`, typed in `src/preload/index.ts` (`KeeBindApi`), ex
 | `app:info` | invoke | version + platform |
 | `settings:get` / `settings:set` | invoke | `Settings` (theme, launchAtLogin, bindingsEnabled, showDockIcon, showTechnicalDetails); set applies side effects (nativeTheme, login item, dock visibility, tray menu, re-register) |
 | `bindings:list` / `bindings:save` / `bindings:delete` | invoke | CRUD; every mutation re-registers all shortcuts and returns fresh `BindingStatus[]` |
-| `bindings:run` | invoke | runs a binding's action now, without its hotkey (popover Run, editor Run) |
+| `bindings:run` | invoke | executes through the same confirmation gate as global hotkeys; returns `BindingRunResult` (`ran` or `denied`) |
 | `bindings:checkConflicts` | invoke | `ConflictHit[]` for an accelerator (OS DB + in-app duplicates) |
 | `listener:start` / `listener:stop` / `listener:status` | invoke | uiohook control; status includes macOS Accessibility and a blocked reason |
 | `listener:key` | main→renderer push | `KeyEventPayload` stream while listening (both edges; `modifier` tags Shift/Ctrl/Alt/Meta) |
@@ -77,6 +79,9 @@ Defined in `src/main/ipc.ts`, typed in `src/preload/index.ts` (`KeeBindApi`), ex
 - **Permission grants are pinned to the binary.** Ad-hoc signing gives a designated requirement of `cdhash` alone, so a rebuild silently invalidates every grant while the privacy pane keeps showing the old row ticked. `permissions.ts` stores the cdhash it was granted under and reports `staleGrant` when the running build differs, with a `tccutil`-based reset to clear the dead record (DECISIONS.md #13).
 - **Accessibility is the sole listener permission.** libuiohook hard-codes an active `kCGEventTapOptionDefault` and checks `AXIsProcessTrusted` before starting. Apple states that Accessibility grants both event listening and posting; Input Monitoring is the narrower alternative for passive listen-only taps. Requiring both was incorrect. `startListener()` therefore checks Accessibility only and reports `blockedReason: permissions` when it is absent.
 - **Pinned bindings** carry `Binding.pinned`. Saving or deleting any binding calls `refreshPopover()` so the menu-bar list never goes stale. The popover's Manage button routes through `app:navigate`, which shows the main window and hands the renderer a `bindingId` to open.
+- **Binding execution has one gate.** Global shortcuts and every manual Run entry call `executeBinding()`. `Binding.confirmBeforeRun` opens a fail-closed native dialog with the hotkey, separate name and description, and full action details; rapid duplicate triggers share one in-flight result. The dialog is owned by the invoking window, or temporarily reveals the hidden main window for a global hotkey, so it cannot disappear behind other apps. Acceptance is revalidated against the saved binding before `runAction`, preventing an edited, disabled, or deleted binding from executing through an obsolete prompt.
+- **Binding records remain backward-compatible.** `Binding.name` and `Binding.confirmBeforeRun` are optional in the persisted type. A pre-v0.2.8 record therefore keeps its description as the display name and runs without prompting until the user opts in.
+- **Binding search is shared.** `bindingMatchesQuery()` applies the same case-insensitive all-term match to the Bindings tab and pinned popover, including name, accelerator, description, action type, workflow steps, targets and arguments.
 - **Tooltips are portalled**: `Tooltip` renders its bubble into `<body>` with `position: fixed`, measured and clamped to the viewport. As a CSS `::after` on the trigger it was clipped by `.content`'s overflow and by the window edges (see DECISIONS.md #9).
 - **Icons are code**: `scripts/generate-icons.mjs` writes every PNG with a self-contained encoder plus a supersampling rasterizer over unit-space shapes, so one geometry renders cleanly at 16px and 1024px. Three lockups of one mark: full (app icon), small (Windows tray), stencil (macOS template). `components/Logo.tsx` mirrors the full lockup as inline SVG for the UI.
 - **Packaging**: `electron-builder.yml` ships `resources/` via extraResources, unpacks dependency `.node` files, and ad-hoc signs macOS (`identity: '-'`, `hardenedRuntime: false`) so Accessibility is attributed to KeeBind (see DECISIONS.md #8). No `LSUIElement`: the Dock icon shows by default and `app.dock.hide()` removes it when "Show in Dock" is off.

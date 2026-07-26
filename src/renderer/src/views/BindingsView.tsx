@@ -1,36 +1,22 @@
 import { useCallback, useEffect, useState } from 'react'
+import { bindingDisplayName, summarizeAction } from '../../../shared/action-summary'
 import type { Binding, BindingStatus, ConflictHit, Platform } from '../../../shared/types'
-import { ActionEditor, summarizeAction } from '../components/ActionEditor'
+import { ActionEditor } from '../components/ActionEditor'
 import { KeyCaptureField } from '../components/KeyCaptureField'
 import { Tooltip } from '../components/Tooltip'
+import { bindingMatchesQuery } from '../binding-search'
 
 function emptyBinding(accelerator = ''): Binding {
   return {
     id: crypto.randomUUID(),
     accelerator,
+    name: '',
     description: '',
     enabled: true,
     pinned: false,
+    confirmBeforeRun: false,
     action: { type: 'launchApp', target: '' }
   }
-}
-
-function bindingSearchText(binding: Binding): string {
-  const actionTargets =
-    binding.action.type === 'workflow'
-      ? (binding.action.steps ?? [])
-          .flatMap((step) => [step.type, step.target, step.args ?? ''])
-          .join(' ')
-      : [binding.action.type, binding.action.target ?? '', binding.action.args ?? ''].join(' ')
-
-  return [
-    binding.accelerator,
-    binding.description,
-    summarizeAction(binding.action),
-    actionTargets
-  ]
-    .join(' ')
-    .toLocaleLowerCase()
 }
 
 interface Props {
@@ -149,7 +135,8 @@ export function BindingsView({
 
   const runNow = async (binding: Binding) => {
     try {
-      await window.keebind.runBinding(binding.id)
+      const result = await window.keebind.runBinding(binding.id)
+      if (result.outcome !== 'ran') return
       setRan(binding.id)
       setTimeout(() => setRan(null), 1400)
     } catch {
@@ -160,14 +147,7 @@ export function BindingsView({
   const statusFor = (id: string) => statuses.find((s) => s.id === id)
   const pinnedCount = bindings.filter((b) => b.pinned).length
   const surface = platform === 'darwin' ? 'menu bar' : 'tray'
-  const searchTerms = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean)
-  const filteredBindings =
-    searchTerms.length === 0
-      ? bindings
-      : bindings.filter((binding) => {
-          const text = bindingSearchText(binding)
-          return searchTerms.every((term) => text.includes(term))
-        })
+  const filteredBindings = bindings.filter((binding) => bindingMatchesQuery(binding, query))
 
   return (
     <div className="main-view">
@@ -222,7 +202,12 @@ export function BindingsView({
           <div className="binding-card" key={b.id}>
             <kbd>{b.accelerator}</kbd>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="desc">{b.description || summarizeAction(b.action)}</div>
+              <div className="desc">
+                {b.name?.trim() || b.description || summarizeAction(b.action)}
+              </div>
+              {b.name?.trim() && b.description.trim() && (
+                <div className="binding-description">{b.description}</div>
+              )}
               <div className="action-summary">{summarizeAction(b.action)}</div>
             </div>
             {b.enabled && st && !st.registered && (
@@ -311,11 +296,20 @@ export function BindingsView({
               />
             </label>
             <label className="field">
+              Name
+              <input
+                type="text"
+                value={editing.name ?? ''}
+                placeholder="e.g. Open my notes"
+                onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+              />
+            </label>
+            <label className="field editor-description">
               Description
               <input
                 type="text"
                 value={editing.description}
-                placeholder="What does this binding do?"
+                placeholder="Optional details about what this binding does"
                 onChange={(e) => setEditing({ ...editing, description: e.target.value })}
               />
             </label>
@@ -341,16 +335,30 @@ export function BindingsView({
           </div>
 
           <div className="row editor-footer">
-            <Tooltip tip={`Show this binding in the ${surface}`}>
-              <label className="check-inline">
-                <input
-                  type="checkbox"
-                  checked={editing.pinned ?? false}
-                  onChange={(e) => setEditing({ ...editing, pinned: e.target.checked })}
-                />
-                Pin to {surface}
-              </label>
-            </Tooltip>
+            <div className="editor-options">
+              <Tooltip tip={`Show this binding in the ${surface}`}>
+                <label className="check-inline">
+                  <input
+                    type="checkbox"
+                    checked={editing.pinned ?? false}
+                    onChange={(e) => setEditing({ ...editing, pinned: e.target.checked })}
+                  />
+                  Pin to {surface}
+                </label>
+              </Tooltip>
+              <Tooltip tip="Ask for approval before this binding runs from a hotkey, KeeBind, or the menu">
+                <label className="check-inline">
+                  <input
+                    type="checkbox"
+                    checked={editing.confirmBeforeRun ?? false}
+                    onChange={(e) =>
+                      setEditing({ ...editing, confirmBeforeRun: e.target.checked })
+                    }
+                  />
+                  Confirm before run
+                </label>
+              </Tooltip>
+            </div>
             <div className="spacer" />
             <Tooltip tip="Discard changes">
               <button className="btn" onClick={() => setEditing(null)}>
@@ -386,7 +394,7 @@ export function BindingsView({
               This permanently removes the binding below. This action cannot be undone.
             </p>
             <div className="delete-binding-preview">
-              <strong>{pendingDelete.description || summarizeAction(pendingDelete.action)}</strong>
+              <strong>{bindingDisplayName(pendingDelete)}</strong>
               <kbd>{pendingDelete.accelerator}</kbd>
             </div>
             <div className="row confirm-actions">

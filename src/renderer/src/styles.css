@@ -374,6 +374,12 @@ kbd {
   font-weight: 600;
 }
 
+.binding-card .binding-description {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
 .binding-card .action-summary {
   color: var(--muted);
   font-size: 12px;
@@ -585,6 +591,10 @@ button.btn.capture-btn {
   margin-bottom: 12px;
 }
 
+.editor-description {
+  grid-column: 1 / -1;
+}
+
 .editor-action {
   margin-top: 14px;
 }
@@ -597,6 +607,14 @@ button.btn.capture-btn {
   margin-top: 18px;
   padding-top: 14px;
   border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.editor-options {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
 }
 
 /* One-line permission status on the Key Listener. The controls themselves
@@ -840,11 +858,41 @@ button.btn.icon-square {
   line-height: 1.5;
 }
 
+.popover-empty-action {
+  margin-top: 7px;
+}
+
+.popover-search {
+  padding: 8px 10px 7px;
+  border-bottom: 1px solid var(--border);
+}
+
+.popover-search-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.popover-search-row input {
+  width: 100%;
+  min-width: 0;
+}
+
+.popover-search-row input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+
+.popover-search-count {
+  min-height: 15px;
+  margin-top: 4px;
+  font-size: 10.5px;
+}
+
 .popover-list {
   list-style: none;
   margin: 0;
   padding: 5px;
-  max-height: 380px;
+  max-height: 340px;
   overflow-y: auto;
 }
 

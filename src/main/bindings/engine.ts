@@ -1,7 +1,7 @@
 import { globalShortcut } from 'electron'
 import type { BindingStatus } from '../../shared/types'
 import { store } from '../store'
-import { notifyActionError, runAction } from './actions'
+import { executeBinding } from './execution'
 
 let lastStatuses: BindingStatus[] = []
 
@@ -20,9 +20,9 @@ export function refreshBindings(): BindingStatus[] {
     let registered = false
     try {
       registered = globalShortcut.register(binding.accelerator, () => {
-        runAction(binding.action).catch((err) =>
-          notifyActionError(binding.description || binding.accelerator, err)
-        )
+        // executeBinding owns confirmation and error notification. The
+        // shortcut callback has nowhere to surface a rejected Promise.
+        void executeBinding(binding).catch(() => {})
       })
     } catch {
       registered = false

@@ -1,4 +1,5 @@
 import type { Binding, ConflictHit } from '../../shared/types'
+import { bindingDisplayName } from '../../shared/action-summary'
 import darwinDbJson from '../data/conflicts/darwin.json'
 import win32DbJson from '../data/conflicts/win32.json'
 
@@ -105,7 +106,7 @@ export function checkConflicts(
       hits.push({
         severity: 'warning',
         combo: other.accelerator,
-        label: `Already bound in KeeBind: "${other.description || other.accelerator}"`,
+        label: `Already bound in KeeBind: "${bindingDisplayName(other)}"`,
         source: 'app'
       })
     }

@@ -154,3 +154,27 @@ Append-only. Newest last. Each entry: context → decision → consequences.
 **Decision:** Disable outlines for both `:focus` and `:focus-visible` across all renderer elements and remove the separate accent outline previously applied to text fields and selects.
 
 **Consequences:** Mouse clicks and keyboard focus no longer draw an additional system-colored halo anywhere in the main window, popover, or About window. Controls remain focusable and keyboard-operable, but focus position is no longer represented by a dedicated visual ring.
+
+## 24. Gate every binding run in the main process (2026-07-26)
+
+**Context:** A per-binding confirmation option must cover global shortcuts while every renderer window may be hidden, as well as Run and double-click actions from two renderer windows. A renderer-only modal would either miss global hotkeys or require showing and coordinating a window before every guarded action.
+
+**Decision:** Add optional `Binding.confirmBeforeRun` and route every saved-binding launch through `bindings/execution.ts`. Checked bindings open a native Electron dialog that shows the hotkey, description, and complete action/workflow. Deny is the default and cancel action. Prompts for different bindings serialize, while concurrent triggers of the same binding share one in-flight Promise and exact binding snapshot.
+
+**Consequences:** No launch path can bypass confirmation, denial is a normal non-error result, and key repeat cannot stack prompts or execute twice. The native dialog works even when KeeBind's windows are hidden. Existing bindings omit the optional field and continue running without a prompt.
+
+## 25. Share search semantics with the pinned popover (2026-07-26)
+
+**Context:** The main Bindings tab already had useful dynamic search, but a long pinned list in the menu-bar/tray popover required scanning or scrolling. Duplicating the matcher would let the two searches drift, and filtering changes the frameless window's height.
+
+**Decision:** Extract one renderer `bindingMatchesQuery()` helper and use it in both views. The pinned popover auto-focuses a compact search field, supports case-insensitive all-term matching, result counts, no-match recovery, Clear and Escape. Every resize repositions the popover against its cached Tray.
+
+**Consequences:** Description, accelerator, action, arguments, workflow steps and targets search identically in both places. The panel grows and shrinks with results while remaining anchored below a top menu bar or above a bottom Windows taskbar.
+
+## 26. Own prompts and invalidate stale approvals (2026-07-26)
+
+**Context:** A standalone native confirmation can open behind the previously active application when KeeBind is tray-only, while parenting it to the frameless pinned popover normally triggers that window's hide-on-blur behavior. A serialized prompt can also remain open long enough for its binding to be edited, disabled, or deleted before the user accepts it. Finally, the existing Description field could not accurately satisfy a confirmation that identifies both a binding name and its descriptive details.
+
+**Decision:** Add an optional, backward-compatible `Binding.name`; use the old description as the display-name fallback. Parent manual prompts to their invoking BrowserWindow and suppress popover blur dismissal for the dialog lifetime. For global shortcuts, temporarily show/focus the hidden main window as the owner and restore its prior visibility afterward. Before running an accepted snapshot, compare its execution-relevant revision with the current stored binding.
+
+**Consequences:** The prompt reliably appears in front, lists the hotkey, distinct name, description and full action, and cannot authorize a binding that changed while approval was pending. Old records remain valid without migration.

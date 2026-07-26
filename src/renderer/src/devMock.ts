@@ -10,6 +10,7 @@ import type {
   PermissionsInfo,
   Settings
 } from '../../shared/types'
+import { bindingDisplayName, describeAction } from '../../shared/action-summary'
 
 const MODIFIER_CODES = new Set([
   'ShiftLeft',
@@ -55,7 +56,8 @@ export function installDevMock(): void {
     {
       id: 'mock-1',
       accelerator: 'F13',
-      description: 'Open my notes',
+      name: 'Open my notes',
+      description: 'Open the folder where I keep working notes.',
       enabled: true,
       pinned: true,
       action: { type: 'openPath', target: '/Users/you/Documents/notes' }
@@ -63,7 +65,8 @@ export function installDevMock(): void {
     {
       id: 'mock-2',
       accelerator: 'CommandOrControl+Shift+K',
-      description: 'Start a work session',
+      name: 'Start a work session',
+      description: 'Open the apps and website used at the start of work.',
       enabled: true,
       pinned: true,
       action: {
@@ -128,7 +131,24 @@ export function installDevMock(): void {
     runBinding: async (id) => {
       const binding = bindings.find((b) => b.id === id)
       if (!binding) throw new Error('That binding no longer exists.')
-      console.info('[dev mock] would run', binding.description || binding.accelerator)
+      if (
+        binding.confirmBeforeRun &&
+        !window.confirm(
+          [
+            `Run “${bindingDisplayName(binding)}”?`,
+            '',
+            `Binding / hotkey: ${binding.accelerator}`,
+            `Name: ${bindingDisplayName(binding)}`,
+            `Description: ${binding.description || 'None'}`,
+            'Action to perform:',
+            describeAction(binding.action)
+          ].join('\n')
+        )
+      ) {
+        return { outcome: 'denied' }
+      }
+      console.info('[dev mock] would run', bindingDisplayName(binding))
+      return { outcome: 'ran' }
     },
     checkConflicts: async (accelerator) =>
       accelerator.toLowerCase() === 'command+space'

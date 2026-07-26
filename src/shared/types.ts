@@ -27,11 +27,19 @@ export interface Binding {
   id: string
   /** Electron accelerator string, e.g. "F13" or "CommandOrControl+Shift+K" */
   accelerator: string
+  /** Short user-facing label. Optional so bindings saved before v0.2.8 still load. */
+  name?: string
   description: string
   enabled: boolean
   /** Shows up in the menu bar / tray popover for one-click running */
   pinned?: boolean
+  /** Ask the user to approve this binding every time before its action runs */
+  confirmBeforeRun?: boolean
   action: ActionSpec
+}
+
+export interface BindingRunResult {
+  outcome: 'ran' | 'denied'
 }
 
 /** Result of trying to register a binding with the OS */

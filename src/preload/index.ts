@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type {
   AppInfo,
   Binding,
+  BindingRunResult,
   BindingStatus,
   ConflictHit,
   KeyEventPayload,
@@ -19,8 +20,8 @@ export interface KeeBindApi {
   listBindings(): Promise<{ bindings: Binding[]; statuses: BindingStatus[] }>
   saveBinding(binding: Binding): Promise<{ bindings: Binding[]; statuses: BindingStatus[] }>
   deleteBinding(id: string): Promise<{ bindings: Binding[]; statuses: BindingStatus[] }>
-  /** Runs a binding's action now, without pressing its hotkey */
-  runBinding(id: string): Promise<void>
+  /** Runs a binding now, returning denied when its confirmation is declined */
+  runBinding(id: string): Promise<BindingRunResult>
   checkConflicts(accelerator: string, excludeId?: string): Promise<ConflictHit[]>
   listenerStart(): Promise<ListenerStatus>
   listenerStop(): Promise<ListenerStatus>
