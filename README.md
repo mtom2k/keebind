@@ -21,8 +21,13 @@ Packaged builds:
 
 ```bash
 npm run build:mac    # dmg + zip (ad-hoc signed, not notarized)
-npm run build:win    # NSIS installer (cross-buildable from macOS)
+npm run build:win    # x64 NSIS installer (native on Windows or cross-buildable from macOS)
 ```
+
+KeeBind uses one application version for both operating systems. A release tag
+such as `v0.2.9` identifies one source commit; that release carries separate
+macOS and Windows artifacts rather than maintaining platform-specific branches
+or version numbers.
 
 ## macOS notes
 
@@ -33,6 +38,12 @@ npm run build:win    # NSIS installer (cross-buildable from macOS)
 - Packaged builds are ad-hoc signed, so Gatekeeper warns on first open (right-click → Open). Because an ad-hoc signature changes with every build, permission grants have to be re-given after an update until there is a Developer ID certificate.
 - Under `npm run dev` macOS attributes permissions to the Electron bundle (or the terminal that launched it), not to KeeBind. The permissions panel says which name to look for.
 - KeeBind shows a Dock icon by default; turn off **Show in Dock** in Settings for menu-bar-only.
+
+## Windows notes
+
+- The **Key Listener does not require a Windows privacy permission**. Start it directly from the Key Listener tab.
+- KeeBind shows a taskbar icon by default; turn off **Show in taskbar** for notification-area-only use.
+- The Windows build is x64 and uses a one-click NSIS installer. It is not code-signed yet, so Microsoft Defender SmartScreen may warn on first launch.
 
 ## Documentation
 

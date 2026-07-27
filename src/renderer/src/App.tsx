@@ -23,7 +23,7 @@ const NAV: { id: View; label: string; tip: string }[] = [
   {
     id: 'settings',
     label: 'Settings',
-    tip: 'Theme, startup, Dock icon, and macOS permissions'
+    tip: 'Theme, startup, tray or Dock visibility, and platform settings'
   },
   {
     id: 'about',

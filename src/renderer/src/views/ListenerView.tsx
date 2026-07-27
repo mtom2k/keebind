@@ -77,7 +77,11 @@ export function ListenerView({
 
   // Full permission controls live in Settings; here we only say whether the
   // listener can actually work.
-  const permissionsOk = permissions?.accessibility === 'granted'
+  // Accessibility is a macOS-only gate. Windows and Linux can start uiohook
+  // directly, so the absence of a macOS permission record must not disable the
+  // listener button on those platforms.
+  const permissionsOk =
+    platform !== 'darwin' || permissions?.accessibility === 'granted'
 
   // While keys are down, show what's down; otherwise the last completed chord.
   const shown = chords.current ?? chords.last
@@ -101,7 +105,8 @@ export function ListenerView({
       <p className="subtitle">
         Press any key on any connected keyboard or macropad, wired or wireless, and see exactly
         what KeeBind receives. Hold a combination and the whole chord is captured together, so you
-        can read off a hotkey like ⌘⌃⇧F before binding it.
+        can read off a hotkey like {platform === 'darwin' ? '⌘⌃⇧F' : 'Ctrl+Alt+F13'} before
+        binding it.
       </p>
 
       {platform === 'darwin' && permissions && (

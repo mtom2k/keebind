@@ -81,7 +81,12 @@ export function createTray(): Tray {
   updateTrayMenu()
 
   tray.on('click', () => togglePopover(tray!))
-  tray.on('right-click', () => tray!.popUpContextMenu(buildMenu()))
+  // Windows opens the menu attached by setContextMenu automatically. Register
+  // the explicit right-click popup only on macOS, where no menu is attached
+  // because doing so would hijack the left-click popover.
+  if (process.platform === 'darwin') {
+    tray.on('right-click', () => tray!.popUpContextMenu(buildMenu()))
+  }
 
   return tray
 }

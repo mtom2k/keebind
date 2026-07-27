@@ -4,6 +4,7 @@ import { appIconPath } from './paths'
 
 let mainWindow: BrowserWindow | null = null
 let quitting = false
+let showInDockOrTaskbar = true
 
 // The renderer is designed around a 190px sidebar and a two-column editor.
 // Keep enough room for that layout while still allowing a useful, bounded
@@ -26,17 +27,22 @@ export function getMainWindow(): BrowserWindow | null {
 }
 
 /**
- * macOS only. Packaged builds omit LSUIElement so the Dock icon is present by
- * default; turning "Show in Dock" off hides it at runtime, which is what makes
- * KeeBind a menu-bar-only app without a separate build flavour.
+ * Applies the shared "Show in Dock/taskbar" setting to the platform shell.
+ * This is called before the main window is created and again for live setting
+ * changes, so keep the desired value even when there is no window yet.
  */
-export function applyDockVisibility(show: boolean): void {
-  if (process.platform !== 'darwin' || !app.dock) return
-  if (show) {
-    app.dock.setIcon(nativeImage.createFromPath(appIconPath()))
-    app.dock.show()
-  } else {
-    app.dock.hide()
+export function applyShellVisibility(show: boolean): void {
+  showInDockOrTaskbar = show
+
+  if (process.platform === 'darwin' && app.dock) {
+    if (show) {
+      app.dock.setIcon(nativeImage.createFromPath(appIconPath()))
+      app.dock.show()
+    } else {
+      app.dock.hide()
+    }
+  } else if (process.platform === 'win32' && mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.setSkipTaskbar(!show)
   }
 }
 
@@ -49,6 +55,9 @@ export function createMainWindow(): BrowserWindow {
     // Keep OS maximize/full-screen actions from bypassing the size ceiling.
     maximizable: false,
     fullscreenable: false,
+    // Windows has no Dock API: tray-only mode is the BrowserWindow's
+    // skipTaskbar flag. The value may have been applied before construction.
+    skipTaskbar: process.platform === 'win32' ? !showInDockOrTaskbar : false,
     show: false,
     autoHideMenuBar: true,
     title: 'KeeBind',

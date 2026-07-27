@@ -1,7 +1,7 @@
 {
   "name": "keebind",
   "productName": "KeeBind",
-  "version": "0.2.9-macos.1",
+  "version": "0.2.9",
   "description": "Cross-platform keybinder and key listener for keyboards and macropads",
   "main": "./out/main/index.js",
   "private": true,

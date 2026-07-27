@@ -5,7 +5,7 @@ import { shutdownListener } from './listener'
 import { destroyPopover } from './popover'
 import { store } from './store'
 import { createTray } from './tray'
-import { applyDockVisibility, createMainWindow, setQuitting, showMainWindow } from './window'
+import { applyShellVisibility, createMainWindow, setQuitting, showMainWindow } from './window'
 
 // Before anything reads it: fixes the process name in dev (packaged builds get
 // it from Info.plist / productName) so menus, dialogs and the macOS privacy
@@ -20,10 +20,10 @@ if (!gotLock) {
   app.on('second-instance', () => showMainWindow())
 
   app.whenReady().then(() => {
-    // Dock/taskbar presence follows the "Show in Dock" setting; applySettings
-    // calls applyDockVisibility. Apply it up front so there is no flicker
+    // Dock/taskbar presence follows the shared "Show in Dock/taskbar" setting; applySettings
+    // calls applyShellVisibility. Apply it up front so there is no flicker
     // before the settings round-trip.
-    applyDockVisibility(store.settings.showDockIcon)
+    applyShellVisibility(store.settings.showDockIcon)
 
     registerIpc()
     applySettings(store.settings)

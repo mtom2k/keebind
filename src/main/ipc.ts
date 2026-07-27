@@ -22,7 +22,7 @@ import {
 import { hidePopover, refreshPopover, resizePopover, showAboutWindow } from './popover'
 import { store } from './store'
 import { updateTrayMenu } from './tray'
-import { applyDockVisibility, getMainWindow, setQuitting, showMainWindow } from './window'
+import { applyShellVisibility, getMainWindow, setQuitting, showMainWindow } from './window'
 
 function broadcast(channel: string, payload: unknown): void {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -32,7 +32,7 @@ function broadcast(channel: string, payload: unknown): void {
 
 export function applySettings(settings: Settings): void {
   nativeTheme.themeSource = settings.theme
-  applyDockVisibility(settings.showDockIcon)
+  applyShellVisibility(settings.showDockIcon)
   try {
     // Only touch login items on a real change: macOS rejects the call for
     // unsigned dev builds, and startup shouldn't spam that error.

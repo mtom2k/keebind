@@ -29,7 +29,10 @@ Prereqs: Node ≥ 20 (developed on 24), npm. If Electron's binary is missing aft
 
 ## Packaging: building a DMG or an EXE
 
-Both installers build from a single macOS machine. Node ≥ 20 and `npm install` are the only prerequisites; Windows needs no Visual Studio toolchain because its native code comes from `uiohook-napi`'s bundled prebuild.
+The macOS artifacts build on macOS. The Windows installer builds either natively
+on Windows or from macOS. Node ≥ 20 and `npm install` are the only prerequisites;
+Windows needs no Visual Studio toolchain because its native code comes from
+`uiohook-napi`'s bundled prebuild.
 
 ```bash
 npm run build:mac
@@ -66,15 +69,17 @@ Expect `Identifier=com.keebind.app`, `Info.plist entries=…` and `Sealed Resour
 - Bumping the version: keep the root version in `package.json` and `package-lock.json` aligned. electron-builder reads it for all artifact names.
 - To sanity-check the renderer without Electron, `npm run dev` and open http://localhost:5173 in a browser (the dev mock takes over). A stale Electron instance holding the single-instance lock will make `npm run dev` exit immediately with code 0. Check `ps aux | grep Electron` if that happens.
 
-**Publishing a platform-qualified build:**
+**Publishing a cross-platform release:**
 
-- Until the Windows build has been exercised on real Windows hardware, use a SemVer pre-release such as `v0.2.9-macos.1` and mark its GitHub Release as a pre-release.
-- Attach the generated arm64 DMG and macOS ZIP. State prominently that the build is ad-hoc signed, not notarized, and that Windows remains unverified.
-- Use an annotated tag that exactly matches the package version with a leading `v`. After Windows validation, publish the unsuffixed tag (for example `v0.2.9`) as the full cross-platform release.
+- Keep one version in `package.json` and `package-lock.json` for both operating systems. Do not create a Windows branch or a Windows-only version number.
+- Build the Windows installer and macOS DMG/ZIP from the exact same commit, then attach all artifacts to one release whose annotated tag is that package version with a leading `v`.
+- Platform qualifiers such as `v0.2.9-macos.1` are temporary pre-release labels for incomplete qualification. Once both platforms are validated, publish the unsuffixed version such as `v0.2.9`.
+- State that the current macOS artifacts are ad-hoc signed/not notarized and the Windows installer is unsigned until production signing is configured.
 
 ## Gotchas (learned the hard way)
 
 - **A native Tray menu can't hold two buttons per row.** That is why the pinned-bindings panel is a real window (DECISIONS.md #11). If you add rows to it, remember macOS gets no `setContextMenu` call, because attaching a menu hijacks left-click.
+- **Do not register two Windows right-click menu paths.** Windows opens the menu attached with `Tray.setContextMenu` automatically. The explicit `right-click` → `popUpContextMenu` handler is macOS-only.
 - **Popover filtering changes its height.** `resizePopover()` repositions against the cached Tray after every height report; keep that step or a bottom Windows taskbar will be covered when a filtered list grows upward.
 - **Popover confirmations temporarily suppress hide-on-blur.** A native child dialog takes focus away from the frameless popover. Keep `setPopoverDialogActive()` around the dialog lifetime or the parent disappears as the prompt opens. Global-hotkey prompts temporarily reveal the hidden main window and restore its prior visibility afterward.
 - **Persisted binding additions must be optional or migrated.** `name` and `confirmBeforeRun` are optional because earlier `config.json` records do not contain them; `bindingDisplayName()` and `?? false` provide the legacy behavior.
@@ -93,7 +98,9 @@ Expect `Identifier=com.keebind.app`, `Info.plist entries=…` and `Sealed Resour
 - **macOS permissions are a signature problem, not a UI problem.** TCC identifies a client by its code signature. See `src/main/permissions.ts` and DECISIONS.md #8/#19 for the full story; packaged builds must be signed (ad-hoc is enough) or macOS blames the launching process. Under `npm run dev` the running bundle is genuinely `node_modules/.../Electron.app`, so Accessibility lands on "Electron" (or your terminal) and the panel says so.
 - **Accessibility is the only listener permission.** uiohook uses an active `kCGEventTapOptionDefault` and hard-checks `AXIsProcessTrusted`. Apple says Accessibility includes listening and posting, whereas Input Monitoring only includes listening. Do not reintroduce an Input Monitoring gate unless the macOS hook is first replaced with a passive `kCGEventTapOptionListenOnly`.
 - **Quit the resident app before testing an upgrade.** KeeBind holds a single-instance lock and stays in the menu bar after its window closes. Launching a DMG copy while an older `/Applications/KeeBind.app` process is alive can reactivate the old version. Check the Settings footer or `CFBundleShortVersionString` before diagnosing the new build.
-- **Windows is unverified**: everything Windows-specific (tray click behavior, taskbar icon, `cmd /c start` launching, conflict DB, NSIS) compiles and cross-builds but has not run on real Windows yet. That's a top open item in PROJECT_STATE.md.
+- **Windows permission state is intentionally absent.** The listener requires no Windows privacy permission. In `ListenerView`, non-macOS platforms must remain allowed when `PermissionsInfo` is null.
+- **Windows taskbar-only behavior lives in `window.ts`.** `applyShellVisibility()` caches the setting before BrowserWindow construction and calls `setSkipTaskbar` for live changes. Do not reduce this back to a macOS-only Dock helper.
+- **Windows runtime is qualified, installer mutation is not.** Listener capture, registered hotkeys, confirmations, app launching, native application picker, real tray popover and taskbar visibility have run on Windows 11. The generated NSIS installer still needs a controlled install/uninstall pass before claiming installer lifecycle coverage.
 
 ## Docs discipline
 

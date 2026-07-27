@@ -210,3 +210,11 @@ Append-only. Newest last. Each entry: context → decision → consequences.
 **Decision:** Publish the current build as the SemVer pre-release `v0.2.9-macos.1`, attach only its macOS artifacts, and mark the GitHub Release as a pre-release. Reserve the unsuffixed `v0.2.9` tag for a cross-platform release after Windows testing.
 
 **Consequences:** macOS users get an immutable, identifiable build without overstating Windows readiness. Additional macOS candidates can increment the suffix, while the eventual cross-platform release retains a conventional clean version.
+
+## 31. One version and release for both operating systems (2026-07-27)
+
+**Context:** Windows validation exposed two actual platform defects: the renderer disabled the listener because no macOS permission record exists on Windows, and the shared Dock/taskbar setting had no Windows taskbar side effect. The Windows tray also had both an attached context menu and an explicit right-click popup path. After fixing those, the listener, chord capture, binding registration and triggering, confirmation, app launch, native picker, pinned tray popover and taskbar visibility were exercised in a real Windows Electron runtime.
+
+**Decision:** Promote the shared package to the previously reserved unsuffixed `v0.2.9`. Maintain one source branch, package version and GitHub Release for macOS and Windows; attach platform-specific artifacts built from the same commit. Implement unavoidable OS differences behind shared settings and APIs: Accessibility gates only macOS, while Windows starts the listener directly and maps shell visibility to `setSkipTaskbar`.
+
+**Consequences:** There is no separate Windows edition or divergent Windows version. The existing `v0.2.9-macos.1` remains an immutable preview; the release macOS artifacts must be rebuilt from the cross-platform `v0.2.9` commit before publishing the full release. Future platform-only qualification can use SemVer prerelease suffixes temporarily, but stable releases remain unsuffixed and shared.

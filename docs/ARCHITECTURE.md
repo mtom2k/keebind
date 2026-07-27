@@ -9,7 +9,7 @@ Electron (43) + TypeScript + React 19, built with electron-vite (Vite 7), packag
 ```
 ┌────────────────────── main process ──────────────────────┐
 │ index.ts      lifecycle, single-instance, app.setName    │
-│ window.ts     bounded BrowserWindow (close = hide), dock │
+│ window.ts     bounded window, close=hide, Dock/taskbar   │
 │ popover.ts    tray popover window + About window         │
 │ paths.ts      resources/ + icon path resolution          │
 │ tray.ts       Tray icon: click = popover, right = menu   │
@@ -49,7 +49,7 @@ Defined in `src/main/ipc.ts`, typed in `src/preload/index.ts` (`KeeBindApi`), ex
 | Channel | Direction | Purpose |
 |---|---|---|
 | `app:info` | invoke | version + platform |
-| `settings:get` / `settings:set` | invoke | `Settings` (theme, launchAtLogin, bindingsEnabled, showDockIcon, showTechnicalDetails); set applies side effects (nativeTheme, login item, dock visibility, tray menu, re-register) |
+| `settings:get` / `settings:set` | invoke | `Settings` (theme, launchAtLogin, bindingsEnabled, showDockIcon, showTechnicalDetails); set applies side effects (nativeTheme, login item, Dock/taskbar visibility, tray menu, re-register) |
 | `bindings:list` / `bindings:save` / `bindings:delete` | invoke | CRUD; save/delete re-register shortcuts and return fresh `BindingStatus[]` |
 | `bindings:reorder` | invoke | validates and persists binding IDs in display order, then refreshes the pinned popover without re-registering unchanged shortcuts |
 | `bindings:run` | invoke | executes through the same confirmation gate as global hotkeys; returns `BindingRunResult` (`ran` or `denied`) |
@@ -79,10 +79,12 @@ Defined in `src/main/ipc.ts`, typed in `src/preload/index.ts` (`KeeBindApi`), ex
 - **Three windows, one bundle.** `main.tsx` reads `location.hash` and renders the main app, the tray popover, or the About panel. The popover is a real frameless window rather than a native `Tray` menu, because a native menu row is a single click target and cannot hold the per-row Run and Manage buttons (see DECISIONS.md #11). It reports its content height over `popover:resize` and hides on blur.
 - **Permission grants are pinned to the binary.** Ad-hoc signing gives a designated requirement of `cdhash` alone, so a rebuild silently invalidates every grant while the privacy pane keeps showing the old row ticked. `permissions.ts` stores the cdhash it was granted under and reports `staleGrant` when the running build differs, with a `tccutil`-based reset to clear the dead record (DECISIONS.md #13).
 - **Accessibility is the sole listener permission.** libuiohook hard-codes an active `kCGEventTapOptionDefault` and checks `AXIsProcessTrusted` before starting. Apple states that Accessibility grants both event listening and posting; Input Monitoring is the narrower alternative for passive listen-only taps. Requiring both was incorrect. `startListener()` therefore checks Accessibility only and reports `blockedReason: permissions` when it is absent.
+- **The listener permission gate is platform-specific.** Accessibility is checked only on macOS. Windows starts uiohook directly and the renderer treats the absence of a macOS permission record as allowed, not denied.
 - **Pinned bindings** carry `Binding.pinned`. Saving, deleting or reordering bindings calls `refreshPopover()` so the menu-bar list never goes stale. The popover filters the persisted binding array without sorting it, so pinned entries inherit the Bindings-tab order. Its Manage button routes through `app:navigate`, which shows the main window and hands the renderer a `bindingId` to open.
 - **Binding execution has one gate.** Global shortcuts and every manual Run entry call `executeBinding()`. `Binding.confirmBeforeRun` opens a fail-closed native dialog with the hotkey, separate name and description, and full action details; rapid duplicate triggers share one in-flight result. The dialog is owned by the invoking window, or temporarily reveals the hidden main window for a global hotkey, so it cannot disappear behind other apps. Acceptance is revalidated against the saved binding before `runAction`, preventing an edited, disabled, or deleted binding from executing through an obsolete prompt.
 - **Binding records remain backward-compatible.** `Binding.name` and `Binding.confirmBeforeRun` are optional in the persisted type. A pre-v0.2.8 record therefore keeps its description as the display name and runs without prompting until the user opts in.
 - **Binding search is shared.** `bindingMatchesQuery()` applies the same case-insensitive all-term match to the Bindings tab and pinned popover, including name, accelerator, description, action type, workflow steps, targets and arguments.
 - **Tooltips are portalled**: `Tooltip` renders its bubble into `<body>` with `position: fixed`, measured and clamped to the viewport. As a CSS `::after` on the trigger it was clipped by `.content`'s overflow and by the window edges (see DECISIONS.md #9).
 - **Icons are code**: `scripts/generate-icons.mjs` writes every PNG with a self-contained encoder plus a supersampling rasterizer over unit-space shapes, so one geometry renders cleanly at 16px and 1024px. Three lockups of one mark: full (app icon), small (Windows tray), stencil (macOS template). `components/Logo.tsx` mirrors the full lockup as inline SVG for the UI.
-- **Packaging**: `electron-builder.yml` ships `resources/` via extraResources, unpacks dependency `.node` files, and ad-hoc signs macOS (`identity: '-'`, `hardenedRuntime: false`) so Accessibility is attributed to KeeBind (see DECISIONS.md #8). No `LSUIElement`: the Dock icon shows by default and `app.dock.hide()` removes it when "Show in Dock" is off.
+- **Shell visibility is one setting with two implementations.** `applyShellVisibility()` stores the desired value before window creation, uses `app.dock.show/hide` on macOS, and `BrowserWindow.setSkipTaskbar` on Windows. The tray/menu-bar icon remains available in either mode.
+- **Packaging**: `electron-builder.yml` ships `resources/` via extraResources, unpacks dependency `.node` files, and ad-hoc signs macOS (`identity: '-'`, `hardenedRuntime: false`) so Accessibility is attributed to KeeBind (see DECISIONS.md #8). Windows produces an unsigned x64 NSIS installer from the same versioned source.
