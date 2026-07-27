@@ -1,57 +1,114 @@
+<div align="center">
+
+<img src="resources/icons/app-icon.png" width="88" alt="KeeBind" />
+
 # KeeBind
 
-A minimal, cross-platform (macOS + Windows) keybinder and key listener for keyboards and macropads.
+**A minimal keybinder and key listener for keyboards and macropads.**
 
-KeeBind lives in the macOS menu bar / Windows notification area and does three things:
+Lives in the macOS menu bar and the Windows notification area — your hotkeys keep working with the window closed.
 
-1. **Key Listener**: press any key on any connected keyboard or macropad (wired, wireless, or Bluetooth) and see exactly what the OS receives.
-2. **Bindings**: give a hotkey a name and description, then launch an app, open a URL, open a file/folder, run a shell command, or run a **workflow** of several steps in order with optional delays. Individual bindings can require confirmation before every run; the fail-closed prompt discloses the hotkey, name, description, and complete action.
-3. **Conflict warnings**: when you pick a hotkey, KeeBind checks it against a per-OS database of system shortcuts (Spotlight, Mission Control, Win+L, PrtScn, F13 to F24 quirks, and so on) and warns you before you shadow something.
+![version](https://img.shields.io/badge/version-0.2.9-4f6bed)
+![platforms](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows-6d6d78)
+![built with](https://img.shields.io/badge/built%20with-Electron%20%2B%20React-6c46e4)
 
-Bindings can be reordered with a drag handle. Pinned menu-bar/tray bindings inherit that order and have the same dynamic name, hotkey, description, action, and target search as the main Bindings tab.
+</div>
 
-## Install / Run
+![The Bindings tab](docs/screenshots/bindings.png)
+
+## ✨ What it does
+
+- ⌨️ **Bind a key to anything** — launch an app, open a URL or folder, run a shell command, or chain several steps into a workflow with delays.
+- 🔍 **Show what your keyboard actually sends** — whole chords, from any connected board including macropads, wired or wireless.
+- ⚠️ **Warn before you shadow the OS** — every hotkey is checked against a per-OS database of system shortcuts (Spotlight, `Win`+`L`, PrtScn, the F13–F24 quirks).
+- ⭐ **Pin favourites to the menu bar** — run them with the mouse, no hotkey needed.
+- 🛡️ **Confirm risky bindings** — opt in per binding and KeeBind asks first, showing the exact action it is about to run.
+
+## 📥 Install
+
+Download the latest installer from [**Releases**](https://github.com/mtom2k/keebind/releases):
+
+| Platform | File |
+| --- | --- |
+| 🍎 macOS (Apple silicon) | `KeeBind-<version>-arm64.dmg` |
+| 🪟 Windows (x64) | `KeeBind Setup <version>.exe` |
+
+Both platforms ship from the same version and the same commit. See the [platform notes](#-macos-notes) below for first-launch warnings.
+
+## 🚀 Getting started
+
+### 1. Find a key that's free
+
+Open **Key Listener**, press **Start listening**, then press the key or combination you have in mind. KeeBind shows the whole chord and remembers what you pressed.
+
+> 💡 `F13`–`F19` are the sweet spot: your OS doesn't use them, and most macropads can send them.
+
+![The Key Listener showing a captured chord](docs/screenshots/listener.png)
+
+### 2. Turn it into a binding
+
+Hit **+ Create binding** (or go to **Bindings → + Add binding**), then:
+
+1. Set the **hotkey** — press **Capture** and hit the key, or type the accelerator.
+2. Give it a **name** and an optional description.
+3. Pick an **action**, or switch to **Workflow (multiple steps)** to run several in order.
+4. **Save binding** — it's live immediately, system-wide.
+
+![Creating a workflow binding](docs/screenshots/binding-editor.png)
+
+| Action | What it does |
+| --- | --- |
+| **Launch app** | Opens an application, with optional arguments. |
+| **Open URL** | Opens a link in your default browser. |
+| **Open file/folder** | Opens a path with whatever app normally handles it. |
+| **Shell command** | Runs a command (zsh on macOS, cmd on Windows). |
+| **Workflow** | Runs any number of the above in order, with per-step delays. |
+
+### 3. Pin the ones you use most ⭐
+
+Click the star on a binding and it appears in the tray popover. Double-click a row to run it, or use the ▶ and ⚙ buttons that show on hover.
+
+<p align="center">
+  <img src="docs/screenshots/popover.png" width="320" alt="The pinned bindings popover" />
+</p>
+
+### 4. Make it yours
+
+**Settings** covers theme, launch at login, tray-only mode, the master switch for every binding, and macOS permissions.
+
+![Settings in dark mode](docs/screenshots/settings.png)
+
+## 🍎 macOS notes
+
+- The **Key Listener needs Accessibility** — grant it with **Request permission** in Settings. Input Monitoring is *not* required, and hotkey bindings work without any permission at all.
+- Builds are ad-hoc signed, so Gatekeeper warns on first open: **right-click → Open**.
+- After an update, permissions must be granted again and System Settings will still show the old entry ticked. That is macOS tying a grant to the exact copy of the app. Settings detects it and offers **Clear old records**.
+- When upgrading, **quit the running menu-bar copy first**. KeeBind is single-instance, so an older resident process otherwise stays the app you see.
+
+## 🪟 Windows notes
+
+- No privacy permission needed — start the Key Listener straight away.
+- The installer is not code-signed yet, so SmartScreen may warn on first launch.
+- Turn off **Show in taskbar** for notification-area-only use.
+
+## 🛠️ Build from source
 
 ```bash
 npm install
 npm run dev          # run in development
-```
-
-Packaged builds:
-
-```bash
 npm run build:mac    # dmg + zip (ad-hoc signed, not notarized)
-npm run build:win    # x64 NSIS installer (native on Windows or cross-buildable from macOS)
+npm run build:win    # x64 NSIS installer (native or cross-built from macOS)
 ```
 
-KeeBind uses one application version for both operating systems. A release tag
-such as `v0.2.9` identifies one source commit; that release carries separate
-macOS and Windows artifacts rather than maintaining platform-specific branches
-or version numbers.
+Node ≥ 20. The screenshots above are generated from the real UI with `npm run screenshots`.
 
-## macOS notes
+## 📚 Documentation
 
-- The **Key Listener requires Accessibility only**. KeeBind's active event tap is covered by Accessibility, which already includes listening access; Input Monitoring is not required. Use **Request permission** in Settings.
-- The permission badge refreshes while Settings is open, including after you grant access in System Settings; no app restart is needed.
-- When upgrading, quit the existing menu-bar copy before replacing `/Applications/KeeBind.app`. KeeBind is single-instance, so an older resident process otherwise remains the app you see. The Settings footer shows the running version.
-- After updating KeeBind, permissions have to be granted again, and System Settings will still show the old entry as enabled. That is macOS tying the grant to the exact copy of the app it was given to. Settings detects this and offers **Clear old records**.
-- Packaged builds are ad-hoc signed, so Gatekeeper warns on first open (right-click → Open). Because an ad-hoc signature changes with every build, permission grants have to be re-given after an update until there is a Developer ID certificate.
-- Under `npm run dev` macOS attributes permissions to the Electron bundle (or the terminal that launched it), not to KeeBind. The permissions panel says which name to look for.
-- KeeBind shows a Dock icon by default; turn off **Show in Dock** in Settings for menu-bar-only.
-
-## Windows notes
-
-- The **Key Listener does not require a Windows privacy permission**. Start it directly from the Key Listener tab.
-- KeeBind shows a taskbar icon by default; turn off **Show in taskbar** for notification-area-only use.
-- The Windows build is x64 and uses a one-click NSIS installer. It is not code-signed yet, so Microsoft Defender SmartScreen may warn on first launch.
-
-## Documentation
-
-All project documentation lives in [docs/](docs/):
-
-- [docs/PROJECT_STATE.md](docs/PROJECT_STATE.md): what works today, what's stubbed, what's planned
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): module map, IPC contract, data flow
-- [docs/HANDOFF.md](docs/HANDOFF.md): how to pick up development (humans and LLMs)
-- [docs/DECISIONS.md](docs/DECISIONS.md): why things are the way they are
+| Doc | Contents |
+| --- | --- |
+| [PROJECT_STATE.md](docs/PROJECT_STATE.md) | What works today, what's verified, what's planned |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Module map, IPC contract, data flow |
+| [HANDOFF.md](docs/HANDOFF.md) | How to pick up development (humans and LLMs) |
+| [DECISIONS.md](docs/DECISIONS.md) | Why things are the way they are |
 
 **These files are kept current as the code changes.** See [CLAUDE.md](CLAUDE.md) for the rule.
