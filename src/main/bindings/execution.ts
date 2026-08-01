@@ -1,9 +1,8 @@
-import { BrowserWindow, dialog } from 'electron'
-import { bindingDisplayName, describeAction } from '../../shared/action-summary'
+import { BrowserWindow } from 'electron'
+import { bindingDisplayName } from '../../shared/action-summary'
 import type { Binding, BindingRunResult } from '../../shared/types'
-import { isPopoverWindow, setPopoverDialogActive } from '../popover'
+import { showBindingConfirmation } from '../confirmation'
 import { store } from '../store'
-import { getMainWindow, showMainWindow } from '../window'
 import { notifyActionError, runAction } from './actions'
 
 /** One in-flight execution per binding prevents hotkey repeat or rapid clicks
@@ -23,54 +22,7 @@ async function confirmRun(binding: Binding, parent?: BrowserWindow): Promise<boo
 
   await previous
   try {
-    const name = bindingDisplayName(binding)
-    const description = binding.description.trim()
-    const options: Electron.MessageBoxOptions = {
-      type: 'question',
-      title: 'Confirm binding',
-      message: `Run “${name}”?`,
-      detail: [
-        `Binding / hotkey: ${binding.accelerator}`,
-        `Name: ${name}`,
-        `Description: ${description || 'None'}`,
-        'Action to perform:',
-        describeAction(binding.action)
-      ].join('\n'),
-      buttons: ['Deny', 'Run binding'],
-      defaultId: 0,
-      cancelId: 0,
-      noLink: true
-    }
-
-    let owner = parent && !parent.isDestroyed() && parent.isVisible() ? parent : getMainWindow()
-    if (!owner || owner.isDestroyed()) {
-      showMainWindow()
-      owner = getMainWindow()
-    }
-
-    const ownerWasVisible = owner?.isVisible() ?? false
-    const ownerWasMinimized = owner?.isMinimized() ?? false
-    const popoverOwner = isPopoverWindow(owner)
-
-    if (owner) {
-      if (ownerWasMinimized) owner.restore()
-      if (!ownerWasVisible) owner.show()
-      owner.focus()
-    }
-    if (popoverOwner) setPopoverDialogActive(true)
-
-    try {
-      const result = owner
-        ? await dialog.showMessageBox(owner, options)
-        : await dialog.showMessageBox(options)
-      return result.response === 1
-    } finally {
-      if (popoverOwner) setPopoverDialogActive(false)
-      if (owner && !owner.isDestroyed()) {
-        if (ownerWasMinimized) owner.minimize()
-        else if (!ownerWasVisible) owner.hide()
-      }
-    }
+    return await showBindingConfirmation(binding, parent)
   } finally {
     release()
   }

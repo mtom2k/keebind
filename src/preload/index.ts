@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type {
   AppInfo,
   Binding,
+  BindingConfirmationDetails,
   BindingRunResult,
   BindingStatus,
   ConflictHit,
@@ -24,6 +25,9 @@ export interface KeeBindApi {
   reorderBindings(ids: string[]): Promise<{ bindings: Binding[]; statuses: BindingStatus[] }>
   /** Runs a binding now, returning denied when its confirmation is declined */
   runBinding(id: string): Promise<BindingRunResult>
+  /** Dedicated confirmation-window contract. Null outside an active prompt. */
+  getBindingConfirmation(): Promise<BindingConfirmationDetails | null>
+  respondBindingConfirmation(approved: boolean): Promise<void>
   checkConflicts(accelerator: string, excludeId?: string): Promise<ConflictHit[]>
   listenerStart(): Promise<ListenerStatus>
   listenerStop(): Promise<ListenerStatus>
@@ -58,6 +62,9 @@ const api: KeeBindApi = {
   deleteBinding: (id) => ipcRenderer.invoke('bindings:delete', id),
   reorderBindings: (ids) => ipcRenderer.invoke('bindings:reorder', ids),
   runBinding: (id) => ipcRenderer.invoke('bindings:run', id),
+  getBindingConfirmation: () => ipcRenderer.invoke('confirmation:get'),
+  respondBindingConfirmation: (approved) =>
+    ipcRenderer.invoke('confirmation:respond', approved),
   checkConflicts: (accelerator, excludeId) =>
     ipcRenderer.invoke('bindings:checkConflicts', { accelerator, excludeId }),
   listenerStart: () => ipcRenderer.invoke('listener:start'),

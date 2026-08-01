@@ -15,6 +15,7 @@ import { bindingMatchesQuery } from '../binding-search'
  */
 export function PopoverView() {
   const [bindings, setBindings] = useState<Binding[]>([])
+  const [loaded, setLoaded] = useState(false)
   const [query, setQuery] = useState('')
   const [running, setRunning] = useState<string | null>(null)
   const [failed, setFailed] = useState<string | null>(null)
@@ -24,6 +25,7 @@ export function PopoverView() {
   const load = useCallback(async () => {
     const res = await window.keebind.listBindings()
     setBindings(res.bindings.filter((b) => b.pinned))
+    setLoaded(true)
   }, [])
 
   useEffect(() => {
@@ -49,8 +51,8 @@ export function PopoverView() {
 
   // The window is sized to its contents, so report the height after each render.
   useLayoutEffect(() => {
-    if (bodyRef.current) window.keebind.resizePopover(bodyRef.current.offsetHeight)
-  }, [bindings, filteredBindings.length, query, failed])
+    if (loaded && bodyRef.current) window.keebind.resizePopover(bodyRef.current.offsetHeight)
+  }, [loaded, bindings, filteredBindings.length, query, failed])
 
   const run = async (binding: Binding) => {
     setRunning(binding.id)

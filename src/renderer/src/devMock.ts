@@ -164,6 +164,18 @@ export function installDevMock(): void {
       console.info('[dev mock] would run', bindingDisplayName(binding))
       return { outcome: 'ran' }
     },
+    getBindingConfirmation: async () =>
+      window.location.hash === '#confirmation'
+        ? {
+            accelerator: 'CommandOrControl+Shift+K',
+            displayName: 'Start a work session',
+            name: 'Start a work session',
+            description: 'Open the apps and website used at the start of work.',
+            actionDescription:
+              'Workflow with 2 steps:\n1. Launch app: Safari\n2. Open URL: https://example.com (after 500 ms)'
+          }
+        : null,
+    respondBindingConfirmation: async () => {},
     checkConflicts: async (accelerator) =>
       accelerator.toLowerCase() === 'command+space'
         ? [

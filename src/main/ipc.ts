@@ -11,6 +11,7 @@ import type {
 import { checkConflicts } from './bindings/conflicts'
 import { bindingStatuses, refreshBindings } from './bindings/engine'
 import { executeBinding } from './bindings/execution'
+import { confirmationDetails, respondToConfirmation } from './confirmation'
 import { listenerStatus, startListener, stopListener } from './listener'
 import {
   openPermissionSettings,
@@ -109,6 +110,11 @@ export function registerIpc(): void {
     return executeBinding(binding, source ?? undefined)
   })
 
+  ipcMain.handle('confirmation:get', (event) => confirmationDetails(event.sender))
+  ipcMain.handle('confirmation:respond', (event, approved: boolean) => {
+    respondToConfirmation(event.sender, approved === true)
+  })
+
   ipcMain.handle('bindings:checkConflicts', (_e, args: { accelerator: string; excludeId?: string }) =>
     checkConflicts(args.accelerator, process.platform, store.bindings, args.excludeId)
   )
@@ -153,7 +159,10 @@ export function registerIpc(): void {
   })
 
   ipcMain.handle('popover:resize', (_e, height: number) => resizePopover(height))
-  ipcMain.handle('popover:hide', () => hidePopover())
+  ipcMain.handle('popover:hide', () => {
+    // Reply to the invoking renderer before its popover window is destroyed.
+    setImmediate(() => hidePopover())
+  })
   ipcMain.handle('app:showAbout', () => showAboutWindow())
   ipcMain.handle('app:navigate', (_e, request: NavigateRequest) => navigateMainWindow(request))
   ipcMain.handle('app:quit', () => {

@@ -1,5 +1,6 @@
 import { app, globalShortcut } from 'electron'
 import { refreshBindings } from './bindings/engine'
+import { destroyConfirmation, focusConfirmation } from './confirmation'
 import { applySettings, registerIpc } from './ipc'
 import { shutdownListener } from './listener'
 import { destroyPopover } from './popover'
@@ -35,13 +36,16 @@ if (!gotLock) {
   // Tray app: keep running when the window is closed.
   app.on('window-all-closed', () => {})
 
-  app.on('activate', () => showMainWindow())
+  app.on('activate', () => {
+    if (!focusConfirmation()) showMainWindow()
+  })
 
   app.on('before-quit', () => {
     setQuitting(true)
     // The popover is frameless and hides on blur, so it would otherwise sit
     // there invisible and keep the app alive.
     destroyPopover()
+    destroyConfirmation()
   })
 
   app.on('will-quit', () => {

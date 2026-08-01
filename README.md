@@ -5,7 +5,7 @@ A minimal, cross-platform (macOS + Windows) keybinder and key listener for keybo
 KeeBind lives in the macOS menu bar / Windows notification area and does three things:
 
 1. **Key Listener**: press any key on any connected keyboard or macropad (wired, wireless, or Bluetooth) and see exactly what the OS receives.
-2. **Bindings**: give a hotkey a name and description, then launch an app, open a URL, open a file/folder, run a shell command, or run a **workflow** of several steps in order with optional delays. Individual bindings can require confirmation before every run; the fail-closed prompt discloses the hotkey, name, description, and complete action.
+2. **Bindings**: give a hotkey a name and description, then launch an app, open a URL, open a file/folder, run a shell command, or run a **workflow** of several steps in order with optional delays. Individual bindings can require confirmation before every run; KeeBind's fail-closed confirmation window discloses the hotkey, name, description, and complete action without revealing the hidden main window.
 3. **Conflict warnings**: when you pick a hotkey, KeeBind checks it against a per-OS database of system shortcuts (Spotlight, Mission Control, Win+L, PrtScn, F13 to F24 quirks, and so on) and warns you before you shadow something.
 
 Bindings can be reordered with a drag handle. Pinned menu-bar/tray bindings inherit that order and have the same dynamic name, hotkey, description, action, and target search as the main Bindings tab.

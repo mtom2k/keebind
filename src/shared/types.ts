@@ -42,6 +42,15 @@ export interface BindingRunResult {
   outcome: 'ran' | 'denied'
 }
 
+/** Read-only content shown by the dedicated binding-confirmation window. */
+export interface BindingConfirmationDetails {
+  accelerator: string
+  displayName: string
+  name: string
+  description: string
+  actionDescription: string
+}
+
 /** Result of trying to register a binding with the OS */
 export interface BindingStatus {
   id: string

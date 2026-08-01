@@ -16,12 +16,24 @@ const MIN_HEIGHT = 120
 const MAX_HEIGHT = 520
 /** Gap between the menu bar / taskbar and the panel. */
 const MARGIN = 6
+/** Windows can briefly blur and immediately refocus a window while focus is
+ * transferred from the notification area. Coalesce that transient pair so the
+ * popover is not visibly hidden between the two native events. */
+const BLUR_DISMISS_DELAY_MS = 150
 
 let popover: BrowserWindow | null = null
 let activeTray: Tray | null = null
-/** A native confirmation owned by the popover must survive the window blur
- * caused by the dialog itself. */
-let dialogActive = false
+/** A show request remains pending until the renderer has refreshed and
+ * reported the content height for that opening. */
+let showPending = false
+let showScheduled = false
+let showScheduleToken = 0
+let blurTimer: ReturnType<typeof setTimeout> | undefined
+
+function clearBlurTimer(): void {
+  if (blurTimer) clearTimeout(blurTimer)
+  blurTimer = undefined
+}
 
 function loadRoute(win: BrowserWindow, hash: string): void {
   if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
@@ -34,7 +46,7 @@ function loadRoute(win: BrowserWindow, hash: string): void {
 function create(): BrowserWindow {
   if (popover && !popover.isDestroyed()) return popover
 
-  popover = new BrowserWindow({
+  const win = new BrowserWindow({
     width: WIDTH,
     height: MIN_HEIGHT,
     show: false,
@@ -54,19 +66,53 @@ function create(): BrowserWindow {
       preload: join(__dirname, '../preload/index.js')
     }
   })
+  popover = win
 
-  loadRoute(popover, 'popover')
+  loadRoute(win, 'popover')
 
-  // Clicking anywhere else dismisses it, the way a menu does.
-  popover.on('blur', () => {
-    if (!dialogActive) hidePopover()
+  // Clicking anywhere else dismisses it, the way a menu does. Windows may
+  // emit a transient blur/focus pair as the notification-area click finishes;
+  // delaying dismissal lets the matching focus cancel that native handoff.
+  win.on('focus', clearBlurTimer)
+  win.on('blur', () => {
+    clearBlurTimer()
+    blurTimer = setTimeout(() => {
+      blurTimer = undefined
+      if (popover === win && !win.isDestroyed() && !win.isFocused()) hidePopover()
+    }, BLUR_DISMISS_DELAY_MS)
   })
-  popover.on('closed', () => {
+  win.on('closed', () => {
+    if (popover !== win) return
+    clearBlurTimer()
     popover = null
-    dialogActive = false
+    activeTray = null
+    showPending = false
+    showScheduled = false
+    showScheduleToken++
   })
 
-  return popover
+  return win
+}
+
+/** Defer presentation until the tray click has completed. On Windows, showing
+ * and focusing synchronously inside the Tray click callback can immediately
+ * hand focus back to the notification area, producing a visible flash. */
+function scheduleShow(): void {
+  if (showScheduled) return
+  showScheduled = true
+  const token = ++showScheduleToken
+  const win = popover
+  const tray = activeTray
+  setImmediate(() => {
+    if (token !== showScheduleToken) return
+    showScheduled = false
+    if (!win || win.isDestroyed() || popover !== win || !showPending || !tray || activeTray !== tray) {
+      return
+    }
+    position(win, tray)
+    win.show()
+    win.focus()
+  })
 }
 
 /** Places the panel under the tray icon, kept fully on the display it's on. */
@@ -92,25 +138,25 @@ function position(win: BrowserWindow, tray: Tray): void {
 }
 
 export function showPopover(tray: Tray): void {
+  clearBlurTimer()
   activeTray = tray
   const win = create()
+  showPending = true
   win.webContents.send('popover:refresh')
-  position(win, tray)
-  win.show()
-  win.focus()
+  // Every opening waits for PopoverView to reload its bindings and report the
+  // resulting height. Reusing the previous measurement made later openings
+  // show stale content immediately and then visibly rebuild/reposition.
 }
 
 export function hidePopover(): void {
-  if (popover && !popover.isDestroyed() && popover.isVisible()) popover.hide()
+  // Re-showing a previously hidden transparent BrowserWindow causes a native
+  // Windows compositor flash. The first creation is stable, so dispose the
+  // panel on dismissal and make every later click use that same fresh path.
+  destroyPopover()
 }
 
 export function isPopoverWindow(candidate?: BrowserWindow | null): boolean {
   return Boolean(candidate && popover && !popover.isDestroyed() && candidate === popover)
-}
-
-/** Keeps the popover visible while its child native confirmation has focus. */
-export function setPopoverDialogActive(active: boolean): void {
-  dialogActive = active
 }
 
 export function togglePopover(tray: Tray): void {
@@ -122,13 +168,14 @@ export function togglePopover(tray: Tray): void {
 export function resizePopover(height: number): void {
   if (!popover || popover.isDestroyed()) return
   const clamped = Math.round(Math.min(Math.max(height, MIN_HEIGHT), MAX_HEIGHT))
-  const [x, y] = popover.getPosition()
-  const wasVisible = popover.isVisible()
-  popover.setBounds({ x, y, width: WIDTH, height: clamped })
+  const bounds = popover.getBounds()
+  if (bounds.height !== clamped || bounds.width !== WIDTH) {
+    popover.setBounds({ x: bounds.x, y: bounds.y, width: WIDTH, height: clamped })
+  }
   // Filtering can grow or shrink the window. Re-anchor after every resize so
   // a bottom Windows taskbar grows upward instead of covering the taskbar.
   if (activeTray) position(popover, activeTray)
-  if (wasVisible) popover.show()
+  if (showPending && !popover.isVisible()) scheduleShow()
 }
 
 /** Tells the panel its list changed (a binding was pinned, renamed, deleted). */
@@ -137,10 +184,14 @@ export function refreshPopover(): void {
 }
 
 export function destroyPopover(): void {
-  if (popover && !popover.isDestroyed()) popover.destroy()
+  clearBlurTimer()
+  const win = popover
   popover = null
   activeTray = null
-  dialogActive = false
+  showPending = false
+  showScheduled = false
+  showScheduleToken++
+  if (win && !win.isDestroyed()) win.destroy()
 }
 
 /* ------------------------------------------------------------ About window */
