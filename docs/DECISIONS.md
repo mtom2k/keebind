@@ -219,6 +219,7 @@ Append-only. Newest last. Each entry: context → decision → consequences.
 
 **Consequences:** There is no separate Windows edition or divergent Windows version. The existing `v0.2.9-macos.1` remains an immutable preview; the release macOS artifacts must be rebuilt from the cross-platform `v0.2.9` commit before publishing the full release. Future platform-only qualification can use SemVer prerelease suffixes temporarily, but stable releases remain unsuffixed and shared.
 
+<<<<<<< HEAD
 ## 32. Dedicated confirmation window and stable tray presentation (2026-08-01)
 
 **Context:** Electron's native message box needed a visible owner to reliably appear in front. A global hotkey therefore revealed the full hidden KeeBind window behind its confirmation and hid it again after the answer. On Windows, the tray popover was also shown at its placeholder height, resized, and explicitly shown again while the notification-area click was still handing off focus, producing a rapid show/hide/show flash.
@@ -234,3 +235,12 @@ Append-only. Newest last. Each entry: context → decision → consequences.
 **Decision:** Treat the tray popover as an ephemeral window. `hidePopover()` disposes it, and the next tray click creates a new renderer window, loads and measures it while hidden, positions it, and shows it once. Defer renderer-requested destruction until after the `popover:hide` IPC reply so the sender is not torn down mid-invocation.
 
 **Consequences:** Every tray click follows the stable first-opening path instead of the flashing Windows re-show path. Opening incurs a small renderer-window creation cost, but the panel is only 320px wide, loads from the local bundle, and is short-lived. macOS uses the same lifecycle for consistent behavior; binding order, search, sizing, blur dismissal and confirmation routing are unchanged.
+=======
+## 32. Generate the README screenshots from the real UI (2026-07-27)
+
+**Context:** The GitHub README needed screenshots, but the repo deliberately holds no binary design assets (#6): icons are drawn by code so they stay diffable and regenerable. Hand-captured screenshots would break that rule in spirit and go stale silently, since nothing ties them to the interface they claim to show. Capturing the real app instead would require a granted Accessibility permission, a populated `config.json`, and real hardware.
+
+**Decision:** Add `scripts/capture-screenshots.mjs`, run by `npm run screenshots`. It loads the built renderer in a bare Electron window with no preload, which is exactly the condition `devMock.ts` installs itself under (#7), then drives the UI through `executeJavaScript` — seeding sample bindings, overriding `permissionsInfo`/`appInfo` so the shots show a packaged app rather than the dev-build notice, dispatching synthetic key events at the mock listener, and setting `nativeTheme.themeSource` per shot. Output goes to `docs/screenshots/*.png`, which are committed but treated as build products.
+
+**Consequences:** The screenshots are reproducible from source and cannot drift from the interface without someone re-running one command, and they need no permissions, hardware or personal configuration to produce. The repo does now carry ~700 KB of PNGs, which is the cost of a README that shows the product. The harness depends on renderer class names (`.nav-item`, `.step-row`, `.editor-grid`) and on the dev mock's shape, so a rename there surfaces as a failed shot rather than a broken build — one more reason to re-run it as part of any visual change.
+>>>>>>> b195ab44a452fbc8a5d985a11ec4cbe434e3f070

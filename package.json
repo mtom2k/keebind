@@ -11,6 +11,7 @@
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "icons": "node scripts/generate-icons.mjs",
+    "screenshots": "electron-vite build && electron scripts/capture-screenshots.mjs",
     "build:mac": "electron-vite build && electron-builder --mac",
     "build:win": "electron-vite build && electron-builder --win"
   },
