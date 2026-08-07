@@ -8,15 +8,9 @@
 
 It sits in the macOS menu bar or the Windows notification area, and your hotkeys keep working after you close the window.
 
-<<<<<<< HEAD
-1. **Key Listener**: press any key on any connected keyboard or macropad (wired, wireless, or Bluetooth) and see exactly what the OS receives.
-2. **Bindings**: give a hotkey a name and description, then launch an app, open a URL, open a file/folder, run a shell command, or run a **workflow** of several steps in order with optional delays. Individual bindings can require confirmation before every run; KeeBind's fail-closed confirmation window discloses the hotkey, name, description, and complete action without revealing the hidden main window.
-3. **Conflict warnings**: when you pick a hotkey, KeeBind checks it against a per-OS database of system shortcuts (Spotlight, Mission Control, Win+L, PrtScn, F13 to F24 quirks, and so on) and warns you before you shadow something.
-=======
 ![version](https://img.shields.io/badge/version-0.2.9-4f6bed)
 ![platforms](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows-6d6d78)
 ![built with](https://img.shields.io/badge/built%20with-Electron%20%2B%20React-6c46e4)
->>>>>>> b195ab44a452fbc8a5d985a11ec4cbe434e3f070
 
 </div>
 
